@@ -44,7 +44,9 @@ def run():
             for wellObj in axis:
                 wellSampleObj = wellObj.getWellSample()
                 
-                # TODO: link Wells to PlateAcquisition
+                plateAcquisitionObj.addWellSample(wellSampleObj)
+                
+        plateObj.removeWell()
 
         client.setOutput("Message", rstring("No errors. Linked PlateAcquisition to Plate."))
     finally:
