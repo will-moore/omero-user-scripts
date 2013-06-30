@@ -7,6 +7,7 @@
 from omero.util import script_utils
 from omero.gateway import BlitzGateway
 from omero.rtypes import *
+from omero.model import *
 import omero.scripts as scripts
 
 
@@ -31,6 +32,8 @@ def run():
             client.setOutput("Message", rstring("ERROR: No Plate with ID %s" % plateId))
             return
         
+        updateService = connection.getUpdateService()
+        
         plateAcquisitionList = list(plateObj.listPlateAcquisitions())
         if len(plateAcquisitionList):
             updateService = connection.getUpdateService()
@@ -38,10 +41,14 @@ def run():
             for plateAcquisitionObj in plateAcquisitionList:
                 plateAcquisitionObj.unlinkAnnotations()
                 plateAcquisitionObj.save()
-                
-                plateObj.clearPlateAcquisitions()
 
-                # TODO: handle children of PlateAcquisition
+                well = WellI()
+                wellSamples = plateAcquisitionObj.copyWellSample()                
+                well.addWellSampleSet(wellSamples)
+                well = updateService.saveAndReturnObject(well)
+                
+                plateObj.addWell(well)   
+                plateObj.clearPlateAcquisitions()
     
                 try:
                     links = list(plateAcquisitionObj.getParentLinks(plateObj.id))
