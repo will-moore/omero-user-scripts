@@ -41,7 +41,7 @@ def run():
         queryString = """
             FROM PlateAcquisition AS pa
             LEFT JOIN FETCH pa.wellSample
-            LEFT JOIN FETCH pa.annotationLinks
+            LEFT OUTER JOIN FETCH pa.annotationLinks
                 WHERE pa.plate.id = :id
             """
         plateAcquisitionList = queryService.findAllByQuery(queryString, params, connection.SERVICE_OPTS)
