@@ -1,8 +1,5 @@
 # coding=utf-8
-""" #1689
-
-    ~/openmicroscopy/dist/bin/omero script list|upload|replace
-    ~/openmicroscopy/dist/bin/omero admin ice server start|stop Processor-0
+""" Remove all PlateAcquisitions from a given Plate.
 """
 from omero.util import script_utils
 from omero.gateway import BlitzGateway
@@ -14,7 +11,7 @@ import omero.scripts as scripts
 def run():
     """
     """
-    client = scripts.client("RemovePlateAcquisition.py", "Remove PlateAcquisition from Plate", scripts.List("IDs", optional=False, grouping="1", description="List of Plate IDs").ofType(rlong(0)))
+    client = scripts.client("RemovePlateAcquisition.py", "Remove all PlateAcquisitions from Plate", scripts.List("IDs", optional=False, grouping="1", description="List of Plate IDs").ofType(rlong(0)))
 
     try:
         scriptParams = {}
@@ -26,56 +23,44 @@ def run():
 
         connection = BlitzGateway(client_obj=client)
         
-        plateId = scriptParams["IDs"][0]
-        plateObj = connection.getObject("Plate", plateId)
-        if plateObj is None:
-            client.setOutput("Message", rstring("ERROR: No Plate with ID %s" % plateId))
-            return
+        processedIdMessages = []
         
-        updateService = connection.getUpdateService()
-        queryService = connection.getQueryService()
-        
-        params = omero.sys.ParametersI()
-        params.addId(plateId)
-
-        queryString = """
-            FROM PlateAcquisition AS pa
-            LEFT JOIN FETCH pa.wellSample
-            LEFT OUTER JOIN FETCH pa.annotationLinks
-                WHERE pa.plate.id = :id
-            """
-        plateAcquisitionList = queryService.findAllByQuery(queryString, params, connection.SERVICE_OPTS)
-        if plateAcquisitionList:        
-            for plateAcquisitionObj in plateAcquisitionList:
-                plateAcquisitionObj.clearWellSample()
-                plateAcquisitionObj.clearAnnotationLinks()
-
-                updateService.saveAndReturnObject(plateAcquisitionObj)
-                updateService.deleteObject(plateAcquisitionObj)
-            client.setOutput("Message", rstring("No errors. %d PlateAcquisitions removed from Plate." % len(plateAcquisitionList)))
-        else:
-            client.setOutput("Message", rstring("No errors. Found no PlateAcquisitions linked to Plate."))
-        # plateAcquisitionList = list(plateObj.listPlateAcquisitions())
-        # if len(plateAcquisitionList):
-        #     for plateAcquisitionObj in plateAcquisitionList:
-        #         # plateAcquisitionObj.unlinkAnnotations()
-        #         # plateAcquisitionObj.save()
-
-        #         well = WellI()
-        #         wellSamples = plateAcquisitionObj.copyWellSample()                
-        #         well.addWellSampleSet(wellSamples)
-        #         well = updateService.saveAndReturnObject(well)
-                
-        #         plateObj.addWell(well)   
-        #         plateObj.clearPlateAcquisitions()
+        for plateId in scriptParams["IDs"]:
+            plateObj = connection.getObject("Plate", plateId)
+            if plateObj is None:
+                client.setOutput("Message", rstring("ERROR: No Plate with ID %s" % plateId))
+                return
+            
+            updateService = connection.getUpdateService()
+            queryService = connection.getQueryService()
+            
+            params = omero.sys.ParametersI()
+            params.addId(plateId)
     
-        #         try:
-        #             links = list(plateAcquisitionObj.getParentLinks(plateObj.id))
-        #         except AttributeError:
-        #             pass
-        #         else:
-        #             for link in links:
-        #                 connection.deleteObjectDirect(link._obj)
+            queryString = """
+                FROM PlateAcquisition AS pa
+                LEFT JOIN FETCH pa.wellSample
+                LEFT OUTER JOIN FETCH pa.annotationLinks
+                    WHERE pa.plate.id = :id
+                """
+            plateAcquisitionList = queryService.findAllByQuery(queryString, params, connection.SERVICE_OPTS)
+            if plateAcquisitionList:        
+                for plateAcquisitionObj in plateAcquisitionList:
+                    for wellSampleObj in plateAcquisitionObj.copyWellSample(): # actually, it's a list
+                        wellSampleObj.setPlateAcquisition(None)
+                        updateService.saveObject(wellSampleObj)
+                
+                    plateAcquisitionObj.clearWellSample()
+                    plateAcquisitionObj.clearAnnotationLinks()
+    
+                    plateAcquisitionObj = updateService.saveAndReturnObject(plateAcquisitionObj)
+                    updateService.deleteObject(plateAcquisitionObj)
+                    
+            processedIdMessages.append("%d PlateAcquisition(s) removed from Plate with ID %d" % (len(plateAcquisitionList), plateId))
+
+        processedStr = ", ".join(processedIdMessages)
+
+        client.setOutput("Message", rstring("No errors. %s." % processedStr))
     finally:
         client.closeSession()
 

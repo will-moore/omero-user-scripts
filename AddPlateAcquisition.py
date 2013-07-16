@@ -1,13 +1,5 @@
 # coding=utf-8
-""" #1687
-
-    ~/openmicroscopy/dist/bin/omero script list|upload|replace
-    ~/openmicroscopy/dist/bin/omero admin ice server start|stop Processor-0
-    
-    print wellObj
-        <_WellWrapper id=5841>
-    
-    
+""" Add a PlateAcquisition to a given Plate.
 """
 from omero.util import script_utils
 from omero.gateway import BlitzGateway
@@ -19,7 +11,7 @@ import omero.scripts as scripts
 def run():
     """
     """
-    client = scripts.client("AddPlateAcquisition.py", "Add PlateAcquisition to Plate", scripts.List("IDs", optional=False, grouping="1", description="List of Plate IDs").ofType(rlong(0)))
+    client = scripts.client("AddPlateAcquisition.py", "Add a PlateAcquisition to Plate", scripts.List("IDs", optional=False, grouping="1", description="List of Plate IDs").ofType(rlong(0)))
 
     try:
         scriptParams = {}
@@ -29,27 +21,33 @@ def run():
 
         connection = BlitzGateway(client_obj=client)
 
-        plateId = scriptParams["IDs"][0]
-        plateObj = connection.getObject("Plate", plateId)
-        if plateObj is None:
-            client.setOutput("Message", rstring("ERROR: No Plate with ID %s" % plateId))
-            return
-
-        updateService = connection.getUpdateService()
-
-        plateAcquisitionObj = PlateAcquisitionI()
-        plateAcquisitionObj.setPlate(PlateI(plateObj.getId(), False))
+        createdIdTuples = []
         
-        wellGrid = plateObj.getWellGrid()
-        for axis in wellGrid:
-            for wellObj in axis:
-                wellSampleList = wellObj.copyWellSamples()
-                plateAcquisitionObj.addAllWellSampleSet(wellSampleList)
-        
-        plateAcquisitionObj = updateService.saveAndReturnObject(plateAcquisitionObj)
-        plateAcquisitionId = plateAcquisitionObj.getId()._val
+        for plateId in scriptParams["IDs"]:
+            plateObj = connection.getObject("Plate", plateId)
+            if plateObj is None:
+                client.setOutput("Message", rstring("ERROR: No Plate with ID %s" % plateId))
+                return
+    
+            updateService = connection.getUpdateService()
+    
+            plateAcquisitionObj = PlateAcquisitionI()
+            plateAcquisitionObj.setPlate(PlateI(plateObj.getId(), False))
+            
+            wellGrid = plateObj.getWellGrid()
+            for axis in wellGrid:
+                for wellObj in axis:
+                    wellSampleList = wellObj.copyWellSamples()
+                    plateAcquisitionObj.addAllWellSampleSet(wellSampleList)
+            
+            plateAcquisitionObj = updateService.saveAndReturnObject(plateAcquisitionObj)
+            plateAcquisitionId = plateAcquisitionObj.getId()._val
 
-        client.setOutput("Message", rstring("No errors. Linked new PlateAcquisition with ID %d to Plate." % plateAcquisitionId))
+            createdIdTuples.append("new PlateAcquisition with ID %d to Plate with ID %d" % (plateAcquisitionId, plateId))
+
+        createdStr = ", ".join(createdIdTuples)
+
+        client.setOutput("Message", rstring("No errors. Linked %s." % createdStr))
     finally:
         client.closeSession()
 
