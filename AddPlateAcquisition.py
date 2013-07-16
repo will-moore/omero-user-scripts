@@ -3,6 +3,11 @@
 
     ~/openmicroscopy/dist/bin/omero script list|upload|replace
     ~/openmicroscopy/dist/bin/omero admin ice server start|stop Processor-0
+    
+    print wellObj
+        <_WellWrapper id=5841>
+    
+    
 """
 from omero.util import script_utils
 from omero.gateway import BlitzGateway
@@ -34,6 +39,13 @@ def run():
 
         plateAcquisitionObj = PlateAcquisitionI()
         plateAcquisitionObj.setPlate(PlateI(plateObj.getId(), False))
+        
+        wellGrid = plateObj.getWellGrid()
+        for axis in wellGrid:
+            for wellObj in axis:
+                wellSampleList = wellObj.copyWellSamples()
+                plateAcquisitionObj.addAllWellSampleSet(wellSampleList)
+        
         plateAcquisitionObj = updateService.saveAndReturnObject(plateAcquisitionObj)
         plateAcquisitionId = plateAcquisitionObj.getId()._val
 
