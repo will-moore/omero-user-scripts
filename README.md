@@ -68,7 +68,7 @@ It will be used to help generate a landing page and links for your work.
 Please modify **all** values on **each** branch to describe your scripts.
 
 ###### Repository name ######
-Base OMERO User Scripts repository
+Glencoe Software scripts for OMERO
 
 ###### Minimum version ######
 4.4
@@ -77,17 +77,16 @@ Base OMERO User Scripts repository
 4.4
 
 ###### Owner(s) ######
-The OME Team
+Glencoe Software
 
 ###### Institution ######
-Open Microscopy Environment
+Glencoe Software, Inc.
 
 ###### URL ######
-http://openmicroscopy.org/info/scripts
+http://glencoesoftware.com
 
 ###### Email ######
-ome-devel@lists.openmicroscopy.org.uk
+support@glencoesoftware.com
 
 ###### Description ######
-Example script repository to be cloned, modified, and extended.
-This text may be used on OME resources to explain your scripts.
+General-purpose scripts for OMERO developed by Glencoe Software
