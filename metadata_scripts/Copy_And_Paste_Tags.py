@@ -20,7 +20,7 @@
 
 ------------------------------------------------------------------------------
 
-Copy Tags from Datasets or Images and apply them to the 
+Copy Tags from Datasets or Images and apply them to the
 child images of the Dataset and/or other Datasets / Images
 """
 
@@ -29,7 +29,7 @@ from omero.gateway import BlitzGateway
 from omero.rtypes import rstring, rlong
 
 
-dataTypes = [rstring('Dataset'),rstring('Image')]
+dataTypes = [rstring('Dataset'), rstring('Image')]
 
 
 def copyAndPasteTags(conn, scriptParams):
@@ -52,14 +52,14 @@ def copyAndPasteTags(conn, scriptParams):
 
     # Get Tags from input Objects
     for obj in conn.getObjects(from_type, from_ids):
-        t = [ann for ann in obj.listAnnotations() if ann._obj.__class__.__name__ == "TagAnnotationI"]
+        t = [ann for ann in obj.listAnnotations()
+             if ann._obj.__class__.__name__ == "TagAnnotationI"]
         tags.extend(t)
 
         # Also get the Child Images if we want to tag them
         if Paste_To_Contained_Images and from_type == "Dataset":
             for img in obj.listChildren():
                 apply_to.append(img)
-
 
     print "Tags", tags
 
@@ -68,43 +68,54 @@ def copyAndPasteTags(conn, scriptParams):
         for obj in conn.getObjects(to_type, to_ids):
             apply_to.append(obj)
 
-
     # Do the Tagging
     for obj in apply_to:
         for t in tags:
             # Check the tag is not already on the object
-            if len(list(conn.getAnnotationLinks(obj.OMERO_CLASS, parent_ids=[obj.id], ann_ids=[t.id]))) == 0:
-                print "Adding Tag:", t.getValue(), " to ", obj.OMERO_CLASS, obj.getName()
+            if len(list(conn.getAnnotationLinks(obj.OMERO_CLASS,
+                   parent_ids=[obj.id], ann_ids=[t.id]))) == 0:
+                print "Adding Tag:", t.getValue(), " to ", \
+                    obj.OMERO_CLASS, obj.getName()
                 obj.linkAnnotation(t, sameOwner=False)
             else:
-                print "** Tag:", t.getValue(), " already on ", obj.OMERO_CLASS, obj.getName()
+                print "** Tag:", t.getValue(), " already on ", \
+                    obj.OMERO_CLASS, obj.getName()
 
+client = scripts.client(
+    'Copy_And_Paste_Tags.py',
+    """Copy Tags from Datasets or Images and apply them to the \
+child images of the Dataset and/or other Datasets / Images""",
 
+    scripts.String(
+        "Data_Type", optional=False, grouping="1",
+        description="The object type to Copy tags from.", values=dataTypes,
+        default="Dataset"),
 
-client = scripts.client('Copy_And_Paste_Tags.py',
-"""
-Copy Tags from Datasets or Images and apply them to the 
-child images of the Dataset and/or other Datasets / Images
-""",
+    scripts.List(
+        "IDs", optional=False, grouping="2",
+        description="IDs of Datasets or Images to Copy tags"
+        " from.").ofType(rlong(0)),
 
-    scripts.String("Data_Type", optional=False, grouping="1",
-    description="The object type to Copy tags from.", values=dataTypes, default="Dataset"),
+    scripts.Bool(
+        "Paste_To_Contained_Images", grouping="3",
+        description="If Copying from Dataset, Add Tags to child Images?",
+        default=False),
 
-    scripts.List("IDs", optional=False, grouping="2",
-    description="IDs of Datasets or Images to Copy tags from.").ofType(rlong(0)),
+    scripts.Bool(
+        "Paste_To_Other_Datasets_Or_Images", grouping="4",
+        description="Can also choose other targets to paste the same tags",
+        default=False),
 
-    scripts.Bool("Paste_To_Contained_Images", grouping="3", 
-        description="If Copying from Dataset, Add Tags to child Images?", default=False),
+    scripts.String(
+        "Paste_To_Type", grouping="4.1",
+        description="The object type to Paste tags to.", values=dataTypes,
+        default="Dataset"),
 
-    scripts.Bool("Paste_To_Other_Datasets_Or_Images", grouping="4", 
-        description="Can also choose other targets to paste the same tags", default=False),
-
-    scripts.String("Paste_To_Type", grouping="4.1",
-    description="The object type to Paste tags to.", values=dataTypes, default="Dataset"),
-
-    scripts.List("Paste_To_IDs", grouping="4.2",
-    description="IDs of Datasets or Images to Paste Tags to.").ofType(rlong(0)),
-)
+    scripts.List(
+        "Paste_To_IDs", grouping="4.2",
+        description="IDs of Datasets or Images to Paste Tags"
+        " to.").ofType(rlong(0)),
+    )
 
 try:
 
@@ -113,7 +124,7 @@ try:
 
     conn = BlitzGateway(client_obj=client)
 
-    # process the list of args above. 
+    # process the list of args above.
     for key in client.getInputKeys():
         if client.getInput(key):
             scriptParams[key] = client.getInput(key, unwrap=True)
