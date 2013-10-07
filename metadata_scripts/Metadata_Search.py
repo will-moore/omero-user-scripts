@@ -24,9 +24,10 @@ This script searches for Images, using database queries queries generated
 from a number of parameters.
 """
 
+import omero
 import omero.scripts as scripts
 from omero.gateway import BlitzGateway
-from omero.rtypes import *
+from omero.rtypes import rint, rdouble, rstring, wrap, unwrap
 
 from datetime import datetime
 
@@ -41,11 +42,15 @@ def searchImages(conn, scriptParams):
     minSizeZ = scriptParams["Min_Size_Z"]
     minSizeT = scriptParams["Min_Size_T"]
     # For others, we check if specified
-    channelNames = "Channel_Names" in scriptParams and scriptParams["Channel_Names"] or []
-    nominalMagnification = "Magnification" in scriptParams and scriptParams["Magnification"] or None
+    channelNames = "Channel_Names" in scriptParams and \
+        scriptParams["Channel_Names"] or []
+    nominalMagnification = "Magnification" in scriptParams and \
+        scriptParams["Magnification"] or None
     lensNA = "Lens_NA" in scriptParams and scriptParams["Lens_NA"] or None
-    excitationWave = "Excitation_Wavelength" in scriptParams and scriptParams["Excitation_Wavelength"] or None
-    objectiveModel = "Objective_Model" in scriptParams and scriptParams["Objective_Model"] or None
+    excitationWave = "Excitation_Wavelength" in scriptParams and \
+        scriptParams["Excitation_Wavelength"] or None
+    objectiveModel = "Objective_Model" in scriptParams and \
+        scriptParams["Objective_Model"] or None
 
     qs = conn.getQueryService()
     params = omero.sys.Parameters()
@@ -67,7 +72,8 @@ def searchImages(conn, scriptParams):
             clauses.append("pixels.sizeT>=:sizeT")
 
     if len(channelNames) > 0 or excitationWave is not None:
-        query = query + " left outer join pixels.channels as c join c.logicalChannel as lc"
+        query = query + " left outer join pixels.channels as c join" \
+            " c.logicalChannel as lc"
         if len(channelNames) > 0:
             params.map["cNames"] = wrap(channelNames)
             clauses.append("lc.name in (:cNames)")
@@ -75,8 +81,8 @@ def searchImages(conn, scriptParams):
             params.map["exWave"] = wrap(excitationWave)
             clauses.append("lc.excitationWave=:exWave)")
 
-
-    if nominalMagnification is not None or lensNA is not None or objectiveModel is not None:
+    if nominalMagnification is not None or lensNA is not None or \
+            objectiveModel is not None:
         query += " join i.objectiveSettings as objS join objS.objective as ob"
         if nominalMagnification is not None:
             params.map["nomMag"] = rint(nominalMagnification)
@@ -103,7 +109,8 @@ def tagImages(conn, imageIds, searchDesc=None):
     """
 
     now = datetime.now()
-    tagText = "Search Results %s %s:%s:%s" % (now.date(), now.hour, now.minute, now.second)
+    tagText = "Search Results %s %s:%s:%s" \
+        % (now.date(), now.hour, now.minute, now.second)
     tag = omero.model.TagAnnotationI()
     tag.setTextValue(wrap(tagText))
     if searchDesc is not None:
@@ -146,37 +153,49 @@ def runScript():
     scripting service, passing the required parameters.
     """
 
-    client = scripts.client('Metadata_Search.py', """This script searches for Images,
-using database queries generated from a number of parameters.""",
+    client = scripts.client(
+        'Metadata_Search.py',
+        """This script searches for Images, using database queries generated \
+from a number of parameters.""",
 
-    scripts.Int("Min_Size_Z", grouping="1", default=1, min=1,
-        description="Find images with this number of Z-planes or more"),
+        scripts.Int(
+            "Min_Size_Z", grouping="1", default=1, min=1,
+            description="Find images with this number of Z-planes or more"),
 
-    scripts.Int("Min_Size_T", grouping="2", default=1, min=1,
-        description="Find images with this number of time-points or more"),
+        scripts.Int(
+            "Min_Size_T", grouping="2", default=1, min=1,
+            description="Find images with this number of time-points or"
+            " more"),
 
-    scripts.Int("Min_Channel_Count", grouping="3", default=1, min=1,
-        description="Find images with this number of channels or more"),
+        scripts.Int(
+            "Min_Channel_Count", grouping="3", default=1, min=1,
+            description="Find images with this number of channels or more"),
 
-    scripts.List("Channel_Names", grouping="4",
-        description="Find images containing channels with these names"),
+        scripts.List(
+            "Channel_Names", grouping="4",
+            description="Find images containing channels with these names"),
 
-    scripts.Int("Excitation_Wavelength", grouping="4.1",
-        description="Find images with channels of this excitation wavelength"),
+        scripts.Int(
+            "Excitation_Wavelength", grouping="4.1",
+            description="Find images with channels of this excitation"
+            " wavelength"),
 
-    scripts.String("Objective_Model", grouping="5",
-        description="Save individual channels as separate images"),
+        scripts.String(
+            "Objective_Model", grouping="5",
+            description="Save individual channels as separate images"),
 
-    scripts.Int("Magnification", grouping="5.1",
-        description="Find images with this Nominal Magnification"),
+        scripts.Int(
+            "Magnification", grouping="5.1",
+            description="Find images with this Nominal Magnification"),
 
-    scripts.String("Lens_NA", grouping="5.2",
-        description="Find images with this Lens NA value"),
+        scripts.String(
+            "Lens_NA", grouping="5.2",
+            description="Find images with this Lens NA value"),
 
-    version = "4.4.9",
-    authors = ["William Moore", "OME Team"],
-    institutions = ["University of Dundee"],
-    contact = "ome-users@lists.openmicroscopy.org.uk",
+        version="4.4.9",
+        authors=["William Moore", "OME Team"],
+        institutions=["University of Dundee"],
+        contact="ome-users@lists.openmicroscopy.org.uk",
     )
 
     try:
