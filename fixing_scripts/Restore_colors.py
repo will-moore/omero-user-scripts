@@ -21,45 +21,6 @@ PARAM_ALL_IMAGES = "All_Images"
 original_ids = {}
 
 ################################################################################
-def getOriginalMetadata(img) :
-    """
-    Gets the original metadata of an image [loadOrginalMetadata() method is broken]
-
-    @param img:    The ImageWrapper object
-    """
-
-    global_metadata = list()
-    series_metadata = list()
-
-    for ann in img.listAnnotations():
-      if hasattr(ann, "file") and ann.getFile().getName().startswith("original_metadata"): 
-#      if ann.getFile() and ann.getFile().getName().startswith("original_metadata"):
-        t_file = list()
-        for piece in ann.getFileInChunks():
-          t_file.append(piece)
-        temp_file = "".join(t_file).split('\n')
-        flag = None
-        for l in temp_file:
-          if l.startswith("[GlobalMetadata]"):
-            flag = 1
-          elif l.startswith("[SeriesMetadata]"):
-            flag = 2
-          else:
-            if len(l) < 1:
-              l = None
-            else:
-              l = tuple(l.split("="))
-            
-            if l is not None:
-              if flag == 1:
-                global_metadata.append(l)
-              else:
-                series_metadata.append(l)
-
-        return (ann, (global_metadata), (series_metadata))
-
-    return None
-
 
 def colorname2rgb(name) :
     """
@@ -112,9 +73,7 @@ def restore_image(conn, img, params) :
     cNames = dict()
     cCodes = dict()
 
-#    original method broken...
-#    om = image.loadOriginalMetadata()
-    om = getOriginalMetadata(img)
+    om = img.loadOriginalMetadata()
 
     if om is not None:
       #global_metadata : om[1]
@@ -126,9 +85,10 @@ def restore_image(conn, img, params) :
             tmp_ar = keyValue[0].split(' ')
             cNames[int(tmp_ar[1])] = keyValue[1]
           # LSM colors
-          if keyValue[0].startswith("DataChannel") and keyValue[0].endswith("Color"):
+          # In OMERO 5. we have DataChannel Color #2', 16711680
+          if keyValue[0].startswith("DataChannel") and "Color" in keyValue[0]:
             tmp_ar = keyValue[0].split(' ')
-            cCodes[int(tmp_ar[1].strip('#'))-1] = int(keyValue[1])
+            cCodes[int(tmp_ar[-1].strip('#'))-1] = int(keyValue[1])
 
       if cNames:
         for index, c in enumerate(img.getChannels()):
