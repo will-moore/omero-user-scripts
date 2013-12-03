@@ -84,11 +84,12 @@ def restore_image(conn, img, params) :
           if keyValue[0].startswith("ChannelDescription|LUTName"):
             tmp_ar = keyValue[0].split(' ')
             cNames[int(tmp_ar[1])] = keyValue[1]
-          # LSM colors
-          # In OMERO 5. we have DataChannel Color #2', 16711680
+          # LSM colors - try to handle both of these:
+          # In OMERO 4.4 we have DataChannel #1 Color : 65280
+          # In OMERO 5. we have DataChannel Color #2 : 16711680
           if keyValue[0].startswith("DataChannel") and "Color" in keyValue[0]:
-            tmp_ar = keyValue[0].split(' ')
-            cCodes[int(tmp_ar[-1].strip('#'))-1] = int(keyValue[1])
+            ch_idx = keyValue[0].split("#")[1].split(" ")[0]
+            cCodes[int(ch_idx)-1] = int(keyValue[1])
 
       if cNames:
         for index, c in enumerate(img.getChannels()):
