@@ -15,10 +15,21 @@ from omero.rtypes import *
 
 PARAM_DATATYPE = "Data_Type"
 PARAM_IDS = "IDs"
+PARAM_COLORS = "Colors"
 PARAM_ALL_IMAGES = "All_Images"
 
-# Global dictionary of original file IDs
-original_ids = {}
+name2rgb = dict()
+name2rgb['Red'] = (255,0,0)
+name2rgb['Green'] = (0,255,0)
+name2rgb['Blue'] = (0,0,255)
+name2rgb['Yellow'] = (255,255,0)
+name2rgb['Magenta'] = (255,0,255)
+name2rgb['Cyan'] = (0,255,255)
+name2rgb['Gray'] = (128,128,128)
+name2rgb['White'] = (255,255,255)
+COLOR_PLACEHOLDER = 'Auto'
+
+colorOptions = omero.rtypes.wrap([COLOR_PLACEHOLDER] + name2rgb.keys())
 
 ################################################################################
 
@@ -28,16 +39,6 @@ def colorname2rgb(name) :
     
     @param name: The color name
     """
-
-    name2rgb = dict()
-
-    name2rgb['Red'] = (255,0,0)
-    name2rgb['Green'] = (0,255,0)
-    name2rgb['Blue'] = (0,0,255)
-    name2rgb['Yellow'] = (255,255,0)
-    name2rgb['Magenta'] = (255,0,255)
-    name2rgb['Cyan'] = (0,255,255)
-    name2rgb['Gray'] = (128,128,128)
 
     if name in name2rgb:
       return name2rgb[name]
@@ -70,10 +71,16 @@ def restore_image(conn, img, params) :
     """
 
     treated = 0
+    om = None
     cNames = dict()
     cCodes = dict()
 
-    om = img.loadOriginalMetadata()
+    for idx, cName in enumerate(params[PARAM_COLORS]):
+      if cName != COLOR_PLACEHOLDER:
+        cNames[idx] = cName
+
+    if len(cNames.keys()) == 0:
+      om = img.loadOriginalMetadata()
 
     if om is not None:
       #global_metadata : om[1]
@@ -91,34 +98,34 @@ def restore_image(conn, img, params) :
             ch_idx = keyValue[0].split("#")[1].split(" ")[0]
             cCodes[int(ch_idx)-1] = int(keyValue[1])
 
-      if cNames:
-        for index, c in enumerate(img.getChannels()):
-          lc = c.getLogicalChannel()
-          if index in cNames:
-            r, g, b = colorname2rgb(cNames[index])
-            cObj = conn.getQueryService().get("Channel", c.id)
-            cObj.red = omero.rtypes.rint(r)
-            cObj.green = omero.rtypes.rint(g)
-            cObj.blue = omero.rtypes.rint(b)
-            cObj.alpha = omero.rtypes.rint(255)
-            conn.getUpdateService().saveObject(cObj)
-        
-        img.resetRDefs()
-        treated = 1
-      elif cCodes:
-        for index, c in enumerate(img.getChannels()):
-          lc = c.getLogicalChannel()
-          if index in cCodes:
-            r, g, b = colorcode2rgb(cCodes[index])
-            cObj = conn.getQueryService().get("Channel", c.id)
-            cObj.red = omero.rtypes.rint(r)
-            cObj.green = omero.rtypes.rint(g)
-            cObj.blue = omero.rtypes.rint(b)
-            cObj.alpha = omero.rtypes.rint(255)
-            conn.getUpdateService().saveObject(cObj)
+    if cNames:
+      for index, c in enumerate(img.getChannels()):
+        lc = c.getLogicalChannel()
+        if index in cNames:
+          r, g, b = colorname2rgb(cNames[index])
+          cObj = conn.getQueryService().get("Channel", c.id)
+          cObj.red = omero.rtypes.rint(r)
+          cObj.green = omero.rtypes.rint(g)
+          cObj.blue = omero.rtypes.rint(b)
+          cObj.alpha = omero.rtypes.rint(255)
+          conn.getUpdateService().saveObject(cObj)
 
-        img.resetRDefs()
-        treated = 1
+      img.resetRDefs()
+      treated = 1
+    elif cCodes:
+      for index, c in enumerate(img.getChannels()):
+        lc = c.getLogicalChannel()
+        if index in cCodes:
+          r, g, b = colorcode2rgb(cCodes[index])
+          cObj = conn.getQueryService().get("Channel", c.id)
+          cObj.red = omero.rtypes.rint(r)
+          cObj.green = omero.rtypes.rint(g)
+          cObj.blue = omero.rtypes.rint(b)
+          cObj.alpha = omero.rtypes.rint(255)
+          conn.getUpdateService().saveObject(cObj)
+
+      img.resetRDefs()
+      treated = 1
 
 
     return treated
@@ -176,7 +183,9 @@ def runAsScript():
     dataTypes = [rstring('Dataset'),rstring('Image')]
     
     client = scripts.client('Restore_colors.py', """\
-    Restores the original colors for LIF and LSM files.
+    Sets channel colors for chosen images.
+    Can use original metadata for LIF and LSM files or
+    you can choose the channel colors manually.
     """, 
     
     scripts.String(PARAM_DATATYPE, optional=False, grouping="1.1",
@@ -189,6 +198,11 @@ def runAsScript():
     scripts.Bool(PARAM_ALL_IMAGES, grouping="1.3", 
         description="Process all images (ignore the ID parameters)", 
         default=False),
+
+    scripts.List(PARAM_COLORS, optional=True, grouping="2.0",
+        description="Manually choose colors instead of using original metadata",
+        default=COLOR_PLACEHOLDER,
+        values=colorOptions).ofType(rstring("")),
 
     version = "1.0",
     authors = ["Pierre Pouchin", "GReD"],
