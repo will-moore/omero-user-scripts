@@ -46,6 +46,19 @@ def colorname2rgb(name) :
       return (255,255,255)
 
 
+def getChannels(conn, image) :
+    """
+    Use this instead of image.getChannels() when we don't need to
+    init the RenderingEngine to avoid OOM with large image counts
+    """
+    pid = image.getPixelsId()
+    params = omero.sys.Parameters()
+    params.map = {"pid": rlong(pid)}
+    query = "select p from Pixels p join fetch p.channels as c join fetch c.logicalChannel as lc where p.id=:pid"
+    pixels = conn.getQueryService().findByQuery(query, params, conn.SERVICE_OPTS)
+    return list(pixels.iterateChannels())
+
+
 def colorcode2rgb(integer) :
     """
     Gives the RGB value corresponding to an int color value.
@@ -99,32 +112,28 @@ def restore_image(conn, img, params) :
             cCodes[int(ch_idx)-1] = int(keyValue[1])
 
     if cNames:
-      for index, c in enumerate(img.getChannels()):
-        lc = c.getLogicalChannel()
+      for index, c in enumerate(getChannels(conn, img)):
         if index in cNames:
           r, g, b = colorname2rgb(cNames[index])
-          cObj = conn.getQueryService().get("Channel", c.id)
+          cObj = conn.getQueryService().get("Channel", c.id.val)
           cObj.red = omero.rtypes.rint(r)
           cObj.green = omero.rtypes.rint(g)
           cObj.blue = omero.rtypes.rint(b)
           cObj.alpha = omero.rtypes.rint(255)
           conn.getUpdateService().saveObject(cObj)
 
-      img.resetRDefs()
       treated = 1
     elif cCodes:
-      for index, c in enumerate(img.getChannels()):
-        lc = c.getLogicalChannel()
+      for index, c in enumerate(getChannels(conn, img)):
         if index in cCodes:
           r, g, b = colorcode2rgb(cCodes[index])
-          cObj = conn.getQueryService().get("Channel", c.id)
+          cObj = conn.getQueryService().get("Channel", c.id.val)
           cObj.red = omero.rtypes.rint(r)
           cObj.green = omero.rtypes.rint(g)
           cObj.blue = omero.rtypes.rint(b)
           cObj.alpha = omero.rtypes.rint(255)
           conn.getUpdateService().saveObject(cObj)
 
-      img.resetRDefs()
       treated = 1
 
 
@@ -148,6 +157,13 @@ def run(conn, params):
       if params[PARAM_DATATYPE] == 'Dataset':
         for ds in objects:
           images.extend( list(ds.listChildren()) )
+      elif params[PARAM_DATATYPE] == 'Plate':
+        imageIds = []
+        for p in objects:
+          for well in p._listChildren():
+              for ws in well.copyWellSamples():
+                  imageIds.append(ws.image.id.val)
+        images = conn.getObjects("Image", imageIds)
       else:
         images = list(objects)
       
@@ -161,10 +177,16 @@ def run(conn, params):
     print("Processing %s image%s" % (len(images), len(images) != 1 and 's' or ''))
     
     count = 0 
+    resetImgIds = []
     for img in images:
       treated = restore_image(conn, img, params)
       if(treated == 1):
+        resetImgIds.append(img.getId())
         count += 1
+
+    # reset rDefs all at once
+    rs = conn.getRenderingSettingsService()
+    rs.resetDefaultsInSet("Image", resetImgIds)
     
     return count
 
@@ -180,7 +202,7 @@ def runAsScript():
     The main entry point of the script, as called by the client via the 
     scripting service, passing the required parameters. 
     """
-    dataTypes = [rstring('Dataset'),rstring('Image')]
+    dataTypes = [rstring('Dataset'),rstring('Image'),rstring('Plate')]
     
     client = scripts.client('Restore_colors.py', """\
     Sets channel colors for chosen images.
