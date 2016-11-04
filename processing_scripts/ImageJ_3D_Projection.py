@@ -189,8 +189,9 @@ save="+oppath );
     macro_args = "*".join([tiff_stack_dir, destination])
     cmd = "java -jar %s -batch %s %s -Xmx1000m" \
         % (IMAGEJPATH, ijm_path, macro_args)
-    os.system(cmd)  # this calls the imagej macro and creates the 36 frames at
-                    # each 10% and are then saved in the destination folder
+    # this calls the imagej macro and creates the 36 frames at
+    # each 10% and are then saved in the destination folder
+    os.system(cmd)
 
 
 def upload_to_omero(conn, destination, imageName, dataset=None):
