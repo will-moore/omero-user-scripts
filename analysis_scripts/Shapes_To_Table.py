@@ -131,7 +131,7 @@ def processData(conn, scriptParams):
         link = omero.model.DatasetAnnotationLinkI()
         link.setParent(omero.model.DatasetI(dataset.getId(), False))
         link.setChild(fileAnn)
-        #conn.getUpdateService().saveAndReturnObject(link)
+        conn.getUpdateService().saveAndReturnObject(link)
 
         a = array(lineLengths)
         print "std", a.std()
@@ -202,7 +202,7 @@ and saving the results to an OMERO.table.""",
         # process images in Datasets
         processData(conn, scriptParams)
 
-        #client.setOutput("Message", rstring("No plates created. See 'Error'
+        # client.setOutput("Message", rstring("No plates created. See 'Error'
         # or 'Info' for details"))
     finally:
         client.closeSession()
