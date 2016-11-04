@@ -34,7 +34,7 @@ import os
 import Image
 from matplotlib.image import imsave
 from numpy import zeros, int32, asarray, add
-from cStringIO import StringIO
+from io import BytesIO
 
 
 # ** NEED to cofigure this with respect to your own server
@@ -95,7 +95,7 @@ def download_rendered_planes(image, tiff_stack_dir, region=None):
             print "Getting region", x, y, w, h
             rv = image.renderJpegRegion(z, t, x, y, w, h)   # returns jpeg data
             if rv is not None:
-                i = StringIO(rv)
+                i = BytesIO(rv)
                 return Image.open(i)
     else:
         def getPlane(z, t):
