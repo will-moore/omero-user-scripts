@@ -27,13 +27,13 @@ NB: Need to have ImageJ installed on the server and the IMAGEJPATH below
 needs to be updated to point at the jar.
 """
 
+import omero.util.script_utils as scriptUtil
 from omero.gateway import BlitzGateway
 from omero.rtypes import rstring, rlong, robject
 import omero.scripts as scripts
 import os
 import Image
-from matplotlib.image import imsave
-from numpy import zeros, int32, asarray, add
+from numpy import int32, asarray
 from io import BytesIO
 
 
@@ -123,19 +123,6 @@ def download_raw_planes(image, tiff_stack_dir, cIndex, region=None):
     theT = 0
     theC = cIndex
 
-    def numpyToImage(plane, name):
-        """
-        Converts the numpy plane to a PIL Image, scaling to cMinMax (minVal,
-        maxVal) and changing data type if needed.
-        Need plane dtype to be uint8 (or int8) for conversion to tiff by PIL
-        """
-        if plane.dtype.name not in ('uint8', 'int8'):
-            convArray = zeros(plane.shape, dtype=int32)
-            # int32 is handled by PIL (not uint32 etc). TODO: support floats
-            add(convArray, plane, out=convArray, casting="unsafe")
-            imsave(name, convArray)
-        imsave(name, plane)
-
     # We use getTiles() or getPlanes() to provide numpy 2D arrays for each
     # image plane
     if region is not None:
@@ -148,8 +135,9 @@ def download_raw_planes(image, tiff_stack_dir, cIndex, region=None):
         # A generator (not all planes in hand)
 
     for z, plane in enumerate(planes):
-        img_path = os.path.join(tiff_stack_dir, "plane_%02d.tiff" % z)
-        numpyToImage(plane, img_path)
+        name = os.path.join(tiff_stack_dir, "plane_%02d.png" % z)
+        minMax = (plane.min(), plane.max())
+        scriptUtil.numpySaveAsImage(plane, minMax, int32, name)
 
 
 def do_processing(tiff_stack_dir, destination, sizeX, axis="Y"):
