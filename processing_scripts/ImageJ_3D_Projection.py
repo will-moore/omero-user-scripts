@@ -135,7 +135,7 @@ def download_raw_planes(image, tiff_stack_dir, cIndex, region=None):
         # A generator (not all planes in hand)
 
     for z, plane in enumerate(planes):
-        name = os.path.join(tiff_stack_dir, "plane_%02d.png" % z)
+        name = os.path.join(tiff_stack_dir, "plane_%02d.tiff" % z)
         minMax = (plane.min(), plane.max())
         scriptUtil.numpySaveAsImage(plane, minMax, int32, name)
 
