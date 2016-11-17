@@ -137,7 +137,7 @@ def download_raw_planes(image, tiff_stack_dir, cIndex, region=None):
     for z, plane in enumerate(planes):
         name = os.path.join(tiff_stack_dir, "plane_%02d.tiff" % z)
         minMax = (plane.min(), plane.max())
-        scriptUtil.numpySaveAsImage(plane, minMax, int32, name)
+        scriptUtil.numpy_save_as_image(plane, minMax, int32, name)
 
 
 def do_processing(tiff_stack_dir, destination, sizeX, axis="Y"):
