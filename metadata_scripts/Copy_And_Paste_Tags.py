@@ -81,6 +81,7 @@ def copyAndPasteTags(conn, scriptParams):
                 print "** Tag:", t.getValue(), " already on ", \
                     obj.OMERO_CLASS, obj.getName()
 
+
 client = scripts.client(
     'Copy_And_Paste_Tags.py',
     """Copy Tags from Datasets or Images and apply them to the \
