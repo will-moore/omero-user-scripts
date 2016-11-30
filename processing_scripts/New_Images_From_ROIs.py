@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 """
+This is a modified version of Alex Herbert's original script.
+This script has been modified so it can be used 
+with OMERO version 5.2.x or newer.
+See https://github.com/aherbert/omero-user-scripts
+
+
 This script gets all the Rectangles from a particular image, then creates new
 images with the regions within the ROIs, and saves them back to the server.
 
 This script is adapted from [SCRIPTS]/omero/util_scripts/Images_From_ROIs.py
-This is an adapted version of Alex Herbert's script so it can be used
-with OMERO version 5.2.x or newer.
-See https://github.com/aherbert/omero-user-scripts
 
 The script has been modified to allow cropping through the entire T or Z stack
 using an ROI defined on a single image plane.
