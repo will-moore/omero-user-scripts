@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 This is a modified version of Alex Herbert's original script.
-This script has been modified so it can be used 
+This script has been modified so it can be used
 with OMERO version 5.2.x or newer.
 See https://github.com/aherbert/omero-user-scripts
 
@@ -21,7 +21,7 @@ import time
 import omero
 import omero.scripts as scripts
 from omero.gateway import BlitzGateway
-from omero.rtypes import *  # noqa
+from omero.rtypes import rstring, rlong
 
 startTime = 0
 
@@ -349,6 +349,7 @@ See: http://www.sussex.ac.uk/gdsc/intranet/microscopy/omero/scripts/rois""",
     finally:
         client.closeSession()
         printDuration()
+
 
 if __name__ == "__main__":
     runAsScript()
