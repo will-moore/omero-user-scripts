@@ -49,6 +49,7 @@ def flipHorizontal(plane):
 def flipVertical(plane):
     return flipud(plane)
 
+
 # The transforms that we support
 actions = {"Rotate_Left": rotate90,
            "Rotate_180": rotate180,
@@ -201,6 +202,7 @@ def runAsScript():
 
     finally:
         client.closeSession()
+
 
 if __name__ == "__main__":
     runAsScript()
