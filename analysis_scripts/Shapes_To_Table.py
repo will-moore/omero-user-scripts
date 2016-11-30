@@ -207,5 +207,6 @@ and saving the results to an OMERO.table.""",
     finally:
         client.closeSession()
 
+
 if __name__ == "__main__":
     runAsScript()
