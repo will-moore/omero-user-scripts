@@ -32,10 +32,13 @@ from omero.gateway import BlitzGateway
 from omero.rtypes import rstring, rlong, robject
 import omero.scripts as scripts
 import os
-import Image
+
 from numpy import int32, asarray
 from io import BytesIO
-
+try:
+    from PIL import Image  # see ticket:2597
+except ImportError:
+    import Image
 
 # ** NEED to cofigure this with respect to your own server
 IMAGEJPATH = "/Applications/ImageJ/ImageJ.app/Contents/Resources/Java/ij.jar"
