@@ -94,7 +94,8 @@ def searchImages(conn, scriptParams):
             params.map["objectiveModel"] = wrap(objectiveModel)
             clauses.append("ob.model=:objectiveModel")
 
-    query = query + " where " + " and ".join(clauses)
+    if len(clauses) > 0:
+        query = query + " where " + " and ".join(clauses)
 
     print "Searh parameters map:", unwrap(params.map)
     print query
