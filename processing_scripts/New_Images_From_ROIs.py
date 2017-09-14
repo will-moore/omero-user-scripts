@@ -56,7 +56,7 @@ def printDuration(output=True):
         print "Script timer = %s secs" % (time.time() - startTime)
 
 
-def getRectangles(conn, imageId):
+def getRectangles(conn, image):
     """
     Returns a list of (x, y, width, height, zStart, zStop, tStart, tStop) of
     each rectangle ROI in the image
@@ -65,27 +65,19 @@ def getRectangles(conn, imageId):
     rois = []
 
     roiService = conn.getRoiService()
-    result = roiService.findByImage(imageId, None)
+    result = roiService.findByImage(image.id, None)
 
     for roi in result.rois:
-        zStart = None
-        zEnd = 0
-        tStart = None
-        tEnd = 0
         x = None
+        theTs = []
+        theZs = []
         for shape in roi.copyShapes():
             if type(shape) == omero.model.RectangleI:
                 # check t range and z range for every rectangle
-                t = shape.getTheT().getValue()
-                z = shape.getTheZ().getValue()
-                if tStart is None:
-                    tStart = t
-                if zStart is None:
-                    zStart = z
-                tStart = min(t, tStart)
-                tEnd = max(t, tEnd)
-                zStart = min(z, zStart)
-                zEnd = max(z, zEnd)
+                if shape.getTheT() is not None:
+                    theTs.append(shape.getTheT().val)
+                if shape.getTheZ() is not None:
+                    theZs.append(shape.getTheZ().val)
                 if x is None:   # get x, y, width, height for first rect only
                     x = int(shape.getX().getValue())
                     y = int(shape.getY().getValue())
@@ -93,7 +85,19 @@ def getRectangles(conn, imageId):
                     height = int(shape.getHeight().getValue())
 
         # if we have found any rectangles at all...
-        if zStart is not None:
+        if x is not None:
+            if len(theZs) > 0:
+                zStart = min(theZs)
+                zEnd = max(theZs)
+            else:
+                zStart = 0
+                zEnd = image.getSizeZ() - 1
+            if len(theTs) > 0:
+                tStart = min(theTs)
+                tEnd = max(theTs)
+            else:
+                tStart = 0
+                tEnd = image.getSizeT() - 1
             rois.append((x, y, width, height, zStart, zEnd, tStart, tEnd))
 
     return rois
@@ -144,7 +148,7 @@ def processImage(conn, imageId, parameterMap):
         exWaves.append(lc.getExcitationWave())
 
     # x, y, w, h, zStart, zEnd, tStart, tEnd
-    rois = getRectangles(conn, imageId)
+    rois = getRectangles(conn, image)
     print "rois"
     print rois
 
