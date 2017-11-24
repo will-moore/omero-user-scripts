@@ -1,3 +1,29 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+-----------------------------------------------------------------------------
+  Copyright (C) 2017 University of Dundee. All rights reserved.
+
+
+  This program is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 2 of the License, or
+  (at your option) any later version.
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License along
+  with this program; if not, write to the Free Software Foundation, Inc.,
+  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+------------------------------------------------------------------------------
+
+This script uses ImageJ to Subtract Background
+The purpose of the script is to be used in the Scripting Dialog
+of Fiji.
+"""
 import os
 from os import path
 
@@ -42,15 +68,16 @@ from ij import IJ
 # OMERO Server details
 HOST = "outreach.openmicroscopy.org"
 PORT = 4064
-PASSWORD = ""
+PASSWORD = "changeMe"
 group_id = "-1"
 
 #  parameters to edit
-dataset_id = ""
-USERNAME = "user-x"
+dataset_id = "changeMe"
+USERNAME = "changeMe"
 
 
 def open_image_plus(HOST, USERNAME, PASSWORD, PORT, group_id, image_id):
+    "Open the image using the Bio-Formats Importer"
 
     options = ""
     options += "location=[OMERO] open=[omero:server="
