@@ -23,14 +23,21 @@
 This script uses ImageJ to Subtract Background by running a macro
 """
 
+import os
+import tempfile
+import subprocess
+import sys
+import omero
+import omero.scripts as scripts
 import omero.util.script_utils as scriptUtil
 from omero.gateway import BlitzGateway
 from omero.rtypes import rstring, rlong, robject
 
-IMAGEJ_CLASSPATH = "/Applications/Fiji.app/Contents/MacOS/ImageJ-macosx"
 
+# Path to the Fiji, to be modified
+IJ_CLASSPATH = "TO-edit"
 
-def run_macro(conn, command_args):
+def run_macro(conn, client, command_args):
     """
     This processes the script parameters, adding defaults if needed.
     Then calls a method to execute the macro.
@@ -41,9 +48,6 @@ def run_macro(conn, command_args):
                             called when the map was processed below.
                             But, list and map objects may contain rtypes (need
                             to call getValue())
-
-    @return:                the id of the originalFileLink child. (ID object,
-                            not value)
     """
 
     images = []
@@ -65,43 +69,115 @@ def run_macro(conn, command_args):
     object_id = object_ids[0]
     of = get_original_file(conn, data_type, object_id, macro_file_id)
 
-    # Read the file
+    # Read the macro
     store = conn.createRawFileStore()
     file_path = scriptUtil.download_file(store, of)
 
+    # Read the images to analyse
+    ome_tiff = load_images(conn, images)
 
-def run_imagej(conn, file_path):
-	"""
+    # Run the macro
+    new_images = run_imagej_macro(conn, file_path, ome_tiff)
+
+    # Upload the results back to OMERO
+    # upload_generated_images(client, ome_tiff)
+    return "macro run"
+
+
+def load_images(conn, images):
+    """
+    Loads the images from OMERO as ome-tiff.
+    """
+    ome_tiff = []
+    size = 1000000
+    tmp_dir = tempfile.mkdtemp()
+    for image in images:
+        try:
+            exporter = conn.createExporter()
+            exporter.addImage(image.getId())
+            exporter.generateTiff()
+            name = '%s_%s.ome.tiff' % (image.getName(), image.getId())
+            image_path = os.path.join(tmp_dir, name)
+            ome_tiff.append(image_path)
+            with open(image_path, 'wb') as out:
+                read = 0
+                while True:
+                    buf = exporter.read(read, size)
+                    out.write(buf)
+                    if len(buf) < size:
+                        break
+                    read += len(buf)
+        except Exception, e:
+            raise e
+        finally:
+            exporter.close()
+    return ome_tiff
+
+
+def upload_generated_images(client, results, dataset=None):
+    """
+    Upload the generated images
+    """
+
+
+
+def run_imagej_macro(conn, file_path, ome_tiff):
+    """
     Run the macro on the selected images
     """
-    ijm_path = "macro.ijm"
 
-    with open(file_path,'r') as f:
+    tmp_dir = tempfile.mkdtemp()
+    ijm_path = os.path.join(tmp_dir, "open_file.ijm")
+
+    with open(file_path, 'r') as f:
         macro_text = f.read()
 
     # write the macro to a known location that we can pass to ImageJ
-    with open(ijm_path, 'w') as ff:
-        ff.write(macro_text)
-    
+    value = """
+setBatchMode(true);
+run("Bio-Formats Macro Extensions");
+"""
+    new_images = []
+    with open(ijm_path, 'wb') as ff:
+        # run the macro on each ome_tiff
+        for i, image in enumerate(ome_tiff):
+            if i == 0:
+                header = value
+            else:
+                header = ""
+
+            ff.write("""%s
+                imps = Ext.openImagePlus("%s")
+            """ % (header, image))
+            ff.write(macro_text)
+            new_name = os.path.basename(image)+ ".ome.tiff"
+            new_image_path = os.path.join(tmp_dir, new_name)
+            print new_image_path
+            ff.write("""run("Bio-Formats Exporter", "save=%s export compression=Uncompressed");
+                     run("Quit");""" % new_image_path)
+            new_images.append(new_image_path)
     try:
-        # Xvcn : reference : http://forum.imagej.net/t/running-macro-in-headless-mode-on-error/161/2
-        args = ["Xvnc4 :$UID 2> /dev/null & export DISPLAY=:$UID & ", IMAGEJ_CLASSPATH, "-macro",
-                ijm_path]
+        # see http://forum.imagej.net/t/running-macro-in-headless-mode-on-error/161/2
+        args = ["Xvnc4 :$UID 2> /dev/null & export DISPLAY=:$UID & ",
+                IJ_CLASSPATH, "--headless", "-macro", ijm_path]
 
         # debug
         cmd = " ".join(args)
         print "Script command = %s" % cmd
 
         # Run the command
-        results = subprocess.Popen(args, stdout=subprocess.PIPE, stdin=subprocess.PIPE).communicate()
+        results = subprocess.Popen(args, shell=False, stdout=subprocess.PIPE,
+                                   stdin=subprocess.PIPE).communicate()
         std_out = results[0]
         std_err = results[1]
         print std_out
         print std_err
         print "Done running ImageJ macro"
-    
+
     except OSError, e:
-        print >>sys.stderr, "Execution failed:", e 
+        print >>sys.stderr, "Execution failed:", e
+
+    return new_images
 
 
 def get_original_file(conn, object_type, object_id, file_ann_id=None):
@@ -146,7 +222,7 @@ def run_script():
     client = scripts.client(
         'omero_imagej_script.py',
         """
-        This script processes a ijm file, attached to an image or dataset,
+        This script processes an ijm file, attached to an image or dataset,
         """,
 
         scripts.String(
@@ -172,14 +248,10 @@ def run_script():
 
         command_args = client.getInputs(unwrap=True)
 
-        # call the main script, attaching resulting figure to Image. Returns
-        # the id of the originalFileLink child. (ID object, not value)
-        file_annotation, message = run_macro(conn, command_args)
+        message = run_macro(conn, client, command_args)
 
         # Return message and file annotation (if applicable) to the client
         client.setOutput("Message", rstring(message))
-        if file_annotation is not None:
-            client.setOutput("File_Annotation", robject(file_annotation._obj))
 
     finally:
         client.closeSession()
