@@ -166,7 +166,7 @@ run("Bio-Formats Macro Extensions");
         print "Script command = %s" % cmd
 
         # Run the command
-        results = subprocess.Popen(args, shell=False, stdout=subprocess.PIPE,
+        results = subprocess.Popen(args, stdout=subprocess.PIPE,
                                    stdin=subprocess.PIPE).communicate()
         std_out = results[0]
         std_err = results[1]
