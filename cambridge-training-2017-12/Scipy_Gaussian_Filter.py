@@ -275,18 +275,21 @@ def create_original_file_from_file_obj(conn, fo, path, name, file_size,
     raw_file_store.setFileId(original_file.getId().getValue(),
                              conn.SERVICE_OPTS)
     buf = 10000
-    for pos in range(0, long(file_size), buf):
-        block = None
-        if file_size-pos < buf:
-            block_size = file_size-pos
-        else:
-            block_size = buf
-        fo.seek(pos)
-        block = fo.read(block_size)
-        raw_file_store.write(block, pos, block_size, conn.SERVICE_OPTS)
-    # https://github.com/openmicroscopy/openmicroscopy/pull/2006
-    original_file = raw_file_store.save(conn.SERVICE_OPTS)
-    raw_file_store.close()
+    try:
+        for pos in range(0, long(file_size), buf):
+            block = None
+            if file_size-pos < buf:
+                block_size = file_size-pos
+            else:
+                block_size = buf
+            fo.seek(pos)
+            block = fo.read(block_size)
+            raw_file_store.write(block, pos, block_size, conn.SERVICE_OPTS)
+
+        original_file = raw_file_store.save(conn.SERVICE_OPTS)
+    finally:
+        raw_file_store.close()
+
     return OriginalFileWrapper(conn, original_file)
 
 
@@ -295,7 +298,8 @@ if __name__ == "__main__":
     client = scripts.client(
         'Scipy_Gaussian_Filter.py',
         """
-    This script processes a ijm file, attached to a P/D/I/Screen or Plate,
+    This script applies a gaussian filter to the selected images,
+    uploads the generated images to OMERO and creates an OMERO.figure
         """,
         scripts.String(
             "Data_Type", optional=False, grouping="1",
