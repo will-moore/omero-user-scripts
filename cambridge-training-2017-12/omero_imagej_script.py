@@ -35,7 +35,7 @@ from omero.rtypes import rstring, rlong, robject
 
 
 # Path to the Fiji, to be modified
-IJ_CLASSPATH = "TO-edit"
+IJ_CLASSPATH = ""
 
 def run_macro(conn, client, command_args):
     """
@@ -159,7 +159,7 @@ run("Bio-Formats Macro Extensions");
     try:
         # see http://forum.imagej.net/t/running-macro-in-headless-mode-on-error/161/2
         args = ["Xvnc4 :$UID 2> /dev/null & export DISPLAY=:$UID & ",
-                IJ_CLASSPATH, "--headless", "-macro", ijm_path]
+                IJ_CLASSPATH, "-macro", ijm_path]
 
         # debug
         cmd = " ".join(args)
