@@ -24,6 +24,7 @@ This script uses ImageJ to Subtract Background by running a macro
 """
 
 import os
+import shutil
 import tempfile
 import subprocess
 import sys
@@ -36,6 +37,7 @@ from omero.rtypes import rstring, rlong, robject
 
 # Path to the Fiji, to be modified
 IJ_CLASSPATH = ""
+SERVER_PATH = ""
 
 def run_macro(conn, client, command_args):
     """
@@ -65,38 +67,52 @@ def run_macro(conn, client, command_args):
                     images.append(image)
 
     # Retrieve the macro to use
-    macro_file_id = long(command_args["Macro_File_ID"])
+    macro_file_name = command_args["Macro_File_Name"]
+    if not macro_file_name.endswith('.ijm'):
+        macro_file_name = '%s.ijm' % macro_file_name
+
+
     object_id = object_ids[0]
-    of = get_original_file(conn, data_type, object_id, macro_file_id)
+    of = get_original_file(conn, data_type, object_id, macro_file_name)
 
     # Read the macro
     store = conn.createRawFileStore()
     file_path = scriptUtil.download_file(store, of)
 
-    # Read the images to analyse
-    ome_tiff = load_images(conn, images)
+    # Read the images to analyse into the specified directory
+    dir_images = tempfile.mkdtemp()
+    ome_tiff = load_images(conn, images, dir_images)
 
     # Run the macro
-    new_images = run_imagej_macro(conn, file_path, ome_tiff)
+    tmp_dir = tempfile.mkdtemp()
+    new_images = run_imagej_macro(conn, file_path, ome_tiff, tmp_dir)
 
+    # Create a dataset to add the images to
+    dataset = omero.model.DatasetI()
+    dataset.name = rstring('Results_for_%s' % macro_file_name)
+    dataset = conn.getUpdateService().saveAndReturnObject(dataset)
     # Upload the results back to OMERO
-    # upload_generated_images(client, ome_tiff)
+    upload_generated_images(client, tmp_dir, dataset.getId().getValue())
+
+    # Delete the directories
+    shutil.rmtree(dir_images)
+    shutil.rmtree(tmp_dir)
+
     return "macro run"
 
 
-def load_images(conn, images):
+def load_images(conn, images, tmp_dir):
     """
     Loads the images from OMERO as ome-tiff.
     """
     ome_tiff = []
     size = 1000000
-    tmp_dir = tempfile.mkdtemp()
     for image in images:
         try:
             exporter = conn.createExporter()
             exporter.addImage(image.getId())
             exporter.generateTiff()
-            name = '%s_%s.ome.tiff' % (image.getName(), image.getId())
+            name = '%s.ome.tiff' % (image.getName())
             image_path = os.path.join(tmp_dir, name)
             ome_tiff.append(image_path)
             with open(image_path, 'wb') as out:
@@ -114,19 +130,28 @@ def load_images(conn, images):
     return ome_tiff
 
 
-def upload_generated_images(client, results, dataset=None):
+def upload_generated_images(client, path_to_directory, dataset_id):
     """
-    Upload the generated images
+    Import to OMERO the generated images in the specified folder
     """
 
+    host = client.getProperty("omero.host")
+    port = client.getProperty("omero.port")
+    key = client.getSessionId()
+    args = [SERVER_PATH, 'import', '-s', 'localhost', '-p', port, '-k', key,
+            '-d', str(dataset_id), path_to_directory]
+    import_prc = subprocess.Popen(args, stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE, shell=False)
+    import_prc.wait()
+    
 
 
-def run_imagej_macro(conn, file_path, ome_tiff):
+def run_imagej_macro(conn, file_path, ome_tiff, tmp_dir):
     """
     Run the macro on the selected images
+    The results will be saved in the specified directory
     """
 
-    tmp_dir = tempfile.mkdtemp()
     ijm_path = os.path.join(tmp_dir, "open_file.ijm")
 
     with open(file_path, 'r') as f:
@@ -150,7 +175,8 @@ run("Bio-Formats Macro Extensions");
                 imps = Ext.openImagePlus("%s")
             """ % (header, image))
             ff.write(macro_text)
-            new_name = os.path.basename(image)+ ".ome.tiff"
+            # the image has already ome.tiff as an extension
+            new_name = os.path.basename(image)
             new_image_path = os.path.join(tmp_dir, new_name)
             print new_image_path
             ff.write("""run("Bio-Formats Exporter", "save=%s export compression=Uncompressed");
@@ -160,18 +186,16 @@ run("Bio-Formats Macro Extensions");
         # see http://forum.imagej.net/t/running-macro-in-headless-mode-on-error/161/2
         args = ["Xvnc4 :$UID 2> /dev/null & export DISPLAY=:$UID & ",
                 IJ_CLASSPATH, "-macro", ijm_path]
-
         # debug
         cmd = " ".join(args)
         print "Script command = %s" % cmd
 
         # Run the command
-        results = subprocess.Popen(args, stdout=subprocess.PIPE,
-                                   stdin=subprocess.PIPE).communicate()
-        std_out = results[0]
-        std_err = results[1]
-        print std_out
-        print std_err
+        p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
+                             stdin=subprocess.PIPE)
+        results = p.communicate()
+        print results[0]
+        print results[1]
         print "Done running ImageJ macro"
 
     except OSError, e:
@@ -180,7 +204,7 @@ run("Bio-Formats Macro Extensions");
     return new_images
 
 
-def get_original_file(conn, object_type, object_id, file_ann_id=None):
+def get_original_file(conn, object_type, object_id, file_ann_name=None):
     """
     Retrieve the file containing the macro.
     """
@@ -200,9 +224,8 @@ def get_original_file(conn, object_type, object_id, file_ann_id=None):
     for ann in omero_object.listAnnotations():
         if isinstance(ann, omero.gateway.FileAnnotationWrapper):
             file_name = ann.getFile().getName()
-            # Pick file by Ann ID (or name if ID is None)
-            if (file_ann_id is None and file_name.endswith(".ijm")) or (
-                    ann.getId() == file_ann_id):
+            if (file_ann_name is None and file_name.endswith(".ijm")) or (
+                    file_ann_name == file_name):
                 file_ann = ann
     if file_ann is None:
         sys.stderr.write("Error: File does not exist.\n")
@@ -235,8 +258,8 @@ def run_script():
             description="List of IDs").ofType(rlong(0)),
 
         scripts.String(
-            "Macro_File_ID", optional=False, grouping="03",
-            description="The File ID corresponding to the macro .ijm"),
+            "Macro_File_Name", optional=False, grouping="03",
+            description="The name of the macro e.g. substract_macro"),
 
         authors=["OME team"],
         institutions=["University of Dundee"],
