@@ -184,14 +184,16 @@ run("Bio-Formats Macro Extensions");
             new_images.append(new_image_path)
     try:
         # see http://forum.imagej.net/t/running-macro-in-headless-mode-on-error/161/2
-        args = ["Xvnc4 :$UID 2> /dev/null & export DISPLAY=:$UID & ",
-                IJ_CLASSPATH, "-macro", ijm_path]
+        # args = ["Xvnc4 :$UID 2> /dev/null & export DISPLAY=:$UID & ",
+        #        IJ_CLASSPATH, "-macro", ijm_path]
         # debug
+        args = ["Xvnc4", ":$UID", "2> /dev/null", "&", "export", "DISPLAY=:$UID", "&",
+                IJ_CLASSPATH, "-macro", ijm_path]
         cmd = " ".join(args)
         print "Script command = %s" % cmd
 
         # Run the command
-        p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
+        p = subprocess.Popen(args, shell=False, stdout=subprocess.PIPE,
                              stdin=subprocess.PIPE)
         results = p.communicate()
         print results[0]
