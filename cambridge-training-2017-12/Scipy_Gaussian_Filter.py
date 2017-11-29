@@ -43,7 +43,7 @@ import datetime
 import omero
 import omero.scripts as scripts
 from omero.rtypes import wrap, rlong
-from omero.gateway import OriginalFileWrapper
+from omero.gateway import OriginalFileWrapper, MapAnnotationWrapper
 from omero.gateway import BlitzGateway
 from omero.rtypes import *  # noqa
 from omeroweb.webgateway.marshal import imageMarshal
@@ -112,6 +112,7 @@ def run(conn, params):
 
         image_ids.append(i.getId())
 
+        add_map_annotation(conn, i, params)
     return image_ids
 
 
@@ -124,6 +125,22 @@ def planeGen(image, zctList, window, sigma):
         data = spi.filters.gaussian_filter(p, sigma=sigma,
                                            truncate=truncated_param)
         yield data
+
+
+def add_map_annotation(conn, image, params):
+
+    window_size = params.get("Kernel_Window_Size")
+    sigma = params.get("Sigma")
+    key_value_data = [["Kernel Window Size", str(window_size)],
+                      ["Sigma", str(sigma)]]
+    print "Adding MAP", key_value_data, image.getId()
+    map_ann = MapAnnotationWrapper(conn)
+    # Use 'client' namespace to allow editing in Insight & web
+    map_ann.setNs(omero.constants.metadata.NSCLIENTMAPANNOTATION)
+    map_ann.setValue(key_value_data)
+    map_ann.save()
+    # NB: only link a client map annotation to a single object
+    image.linkAnnotation(map_ann)
 
 # OMERO Figure Methods
 
