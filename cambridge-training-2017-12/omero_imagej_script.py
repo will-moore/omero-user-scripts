@@ -1,27 +1,25 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
------------------------------------------------------------------------------
-  Copyright (C) 2017 University of Dundee. All rights reserved.
+#-----------------------------------------------------------------------------
+#  Copyright (C) 2017 University of Dundee. All rights reserved.
+#
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+#  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+#------------------------------------------------------------------------------
 
-
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation; either version 2 of the License, or
-  (at your option) any later version.
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License along
-  with this program; if not, write to the Free Software Foundation, Inc.,
-  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-
-------------------------------------------------------------------------------
-
-This script uses ImageJ to Subtract Background by running a macro
-"""
+# This script uses ImageJ to Subtract Background by running a macro
 
 import os
 import shutil
@@ -95,8 +93,8 @@ def run_macro(conn, client, command_args):
     upload_generated_images(client, tmp_dir, dataset.getId().getValue())
 
     # Delete the directories
-    shutil.rmtree(dir_images)
-    shutil.rmtree(tmp_dir)
+    # shutil.rmtree(dir_images)
+    # shutil.rmtree(tmp_dir)
 
     return "macro run"
 
@@ -138,10 +136,11 @@ def upload_generated_images(client, path_to_directory, dataset_id):
     host = client.getProperty("omero.host")
     port = client.getProperty("omero.port")
     key = client.getSessionId()
+    print "Script command = %s" % client.getProperties()
     args = [SERVER_PATH, 'import', '-s', 'localhost', '-p', port, '-k', key,
             '-d', str(dataset_id), path_to_directory]
     import_prc = subprocess.Popen(args, stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE, shell=False)
+                                  stderr=subprocess.PIPE)
     import_prc.wait()
     
 
@@ -183,12 +182,7 @@ run("Bio-Formats Macro Extensions");
                      run("Quit");""" % new_image_path)
             new_images.append(new_image_path)
     try:
-        # see http://forum.imagej.net/t/running-macro-in-headless-mode-on-error/161/2
-        # args = ["Xvnc4 :$UID 2> /dev/null & export DISPLAY=:$UID & ",
-        #        IJ_CLASSPATH, "-macro", ijm_path]
-        # debug
-        args = ["Xvnc4", ":$UID", "2> /dev/null", "&", "export", "DISPLAY=:$UID", "&",
-                IJ_CLASSPATH, "-macro", ijm_path]
+        args = [IJ_CLASSPATH, "--headless", "-macro", ijm_path]
         cmd = " ".join(args)
         print "Script command = %s" % cmd
 
@@ -196,8 +190,6 @@ run("Bio-Formats Macro Extensions");
         p = subprocess.Popen(args, shell=False, stdout=subprocess.PIPE,
                              stdin=subprocess.PIPE)
         results = p.communicate()
-        print results[0]
-        print results[1]
         print "Done running ImageJ macro"
 
     except OSError, e:
