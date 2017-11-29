@@ -89,7 +89,7 @@ def run(conn, params):
                     zctList.append((z, c, t))
 
         plane = planeGen(image, zctList, window_size, sigma)
-        name = image.getName() + "_numpy_image"
+        name = image.getName() + "_gaussian"
         i = conn.createImageFromNumpySeq(plane, name, sizeZ, sizeC,
                                          sizeT, description="Gaussian Filter",
                                          dataset=dataset)
@@ -281,21 +281,21 @@ def get_labels_json(panel_json, column, row):
     imagename = panel_json['name']
     if row == 0:
         labels.append({"text": channels[column]['label'],
-                       "size": 4,
-                       "position": "leftvert",
+                       "size": 8,
+                       "position": "top",
                        "color": "000000"})
     if column == 0:
         labels.append({"text": imagename,
-                       "size": 4,
-                       "position": "top",
+                       "size": 8,
+                       "position": "leftvert",
                        "color": "000000"})
     return labels
 
 
 def create_figure_file(conn, image_ids):
     """Create an OMERO.figure file with the specified images."""
-    width = 512/10
-    height = 512/10
+    width = 512/5
+    height = 512/5
     spacing_x = 512/50
     spacing_y = 512/50
     page_width = (width + spacing_x) * (5) * 1.25
@@ -307,24 +307,24 @@ def create_figure_file(conn, image_ids):
                    "paper_width": page_width,
                    "paper_height": page_height,
                    "page_size": "mm",
-                   "figureName": "from script",
+                   "figureName": "Scipy Gaussian Filter",
                    }
 
     curr_x = 0
     curr_y = 0
     panels_json = []
-    offset = 10
+    offset = 40
 
     gid = -1
-    for z, image_id in enumerate(image_ids):
+    for row, image_id in enumerate(image_ids):
         image = conn.getObject('Image', image_id)
-        curr_x = z * (width + spacing_x) + offset
-        if z == 0:
+        curr_y = row * (height + spacing_y) + offset
+        if row == 0:
             gid = image.getDetails().getGroup().getId()
-        for c in range(image.getSizeC()):
-            curr_y = c * (height + spacing_y) + offset
-            j = get_panel_json(image, curr_x, curr_y, width, height, c)
-            j['labels'] = get_labels_json(j, c, z)
+        for col in range(image.getSizeC()):
+            curr_x = col * (width + spacing_x) + offset
+            j = get_panel_json(image, curr_x, curr_y, width, height, col)
+            j['labels'] = get_labels_json(j, col, row)
             panels_json.append(j)
 
     figure_json['panels'] = panels_json
