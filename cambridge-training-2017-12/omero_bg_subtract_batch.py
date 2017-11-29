@@ -64,12 +64,13 @@ from ij import IJ
 
 # OMERO Server details
 HOST = "outreach.openmicroscopy.org"
+HOST = "localhost"
 PORT = 4064
 group_id = "-1"
 #  parameters to edit
-dataset_id = "changeMe"
-USERNAME = "changeMe"
-PASSWORD = "changeMe"
+dataset_id = "1"
+USERNAME = "root"
+PASSWORD = "omero_root_password"
 
 def open_image_plus(HOST, USERNAME, PASSWORD, PORT, group_id, image_id):
     "Open the image using the Bio-Formats Importer"
@@ -124,7 +125,7 @@ def get_image_ids(gateway, dataset_id):
     return image_ids
 
 
-def upload_image(path, gateway):
+def upload_image(path, gateway, id):
     "Upload an image to omero"
 
     user = gateway.getLoggedInUser()
@@ -135,7 +136,7 @@ def upload_image(path, gateway):
     config.hostname.set(HOST)
     config.sessionKey.set(sessionKey)
     value = "omero.model.Dataset:"
-    value += str(dataset_id)
+    value += str(id)
     config.target.set(value)
 
     loci.common.DebugTools.enableLogging("DEBUG")
@@ -156,6 +157,15 @@ def upload_image(path, gateway):
 gateway = connect_to_omero()
 image_ids = get_image_ids(gateway, dataset_id)
 
+# Create a dataset to store the newly created images will be added
+name = "script_editor_output_from_dataset_" + dataset_id
+d = DatasetData()
+d.setName(name)
+dm = gateway.getFacility(DataManagerFacility)
+user = gateway.getLoggedInUser()
+ctx = SecurityContext(user.getGroupId())
+d = dm.createDataset(ctx, d, None)
+
 for image_id in image_ids:
     print(""+image_id)
     open_image_plus(HOST, USERNAME, PASSWORD, PORT, group_id, image_id)
@@ -175,7 +185,7 @@ for image_id in image_ids:
     print("uploading...")
     str2d = java.lang.reflect.Array.newInstance(java.lang.String, [1])
     str2d[0] = path
-    success = upload_image(str2d, gateway)
+    success = upload_image(str2d, gateway, d.getId())
     # delete the local OME-TIFF image
     os.remove(path)
     print("imported")
