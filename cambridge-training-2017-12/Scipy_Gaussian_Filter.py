@@ -240,7 +240,7 @@ def create_figure_file(conn, image_ids):
     json.dump(figure_json, f)
 
     update = conn.getUpdateService()
-    orig_file = create_original_file_from_file_obj(conn, f, '', figure_name,
+    orig_file = conn.createOriginalFileFromFileObj(f, '', figure_name,
                                                    file_size,
                                                    mimetype="application/json")
     fa = omero.model.FileAnnotationI()
@@ -250,47 +250,6 @@ def create_figure_file(conn, image_ids):
     fa.setDescription(wrap(desc))
     fa = update.saveAndReturnObject(fa, conn.SERVICE_OPTS)
     return fa.getId().getValue()
-
-
-def create_original_file_from_file_obj(conn, fo, path, name, file_size,
-                                       mimetype=None):
-    """
-    Creates and saves an OMERO OriginalFile from a file object
-    """
-    raw_file_store = conn.createRawFileStore()
-
-    # create original file, set name, path, mimetype
-    original_file = omero.model.OriginalFileI()
-    original_file.setName(wrap(name))
-    original_file.setPath(wrap(path))
-    if mimetype:
-        original_file.mimetype = wrap(mimetype)
-    original_file.setSize(rlong(file_size))
-
-    upd = conn.getUpdateService()
-    original_file = upd.saveAndReturnObject(original_file, conn.SERVICE_OPTS)
-
-    # upload file
-    fo.seek(0)
-    raw_file_store.setFileId(original_file.getId().getValue(),
-                             conn.SERVICE_OPTS)
-    buf = 10000
-    try:
-        for pos in range(0, long(file_size), buf):
-            block = None
-            if file_size-pos < buf:
-                block_size = file_size-pos
-            else:
-                block_size = buf
-            fo.seek(pos)
-            block = fo.read(block_size)
-            raw_file_store.write(block, pos, block_size, conn.SERVICE_OPTS)
-
-        original_file = raw_file_store.save(conn.SERVICE_OPTS)
-    finally:
-        raw_file_store.close()
-
-    return OriginalFileWrapper(conn, original_file)
 
 
 if __name__ == "__main__":
