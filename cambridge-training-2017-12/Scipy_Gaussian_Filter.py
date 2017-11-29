@@ -1,71 +1,55 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
------------------------------------------------------------------------------
-  Copyright (C) 2017 University of Dundee. All rights reserved.
 
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation; either version 2 of the License, or
-  (at your option) any later version.
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
+# -----------------------------------------------------------------------------
+#   Copyright (C) 2017 University of Dundee. All rights reserved.
 
-  You should have received a copy of the GNU General Public License along
-  with this program; if not, write to the Free Software Foundation, Inc.,
-  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#   This program is free software; you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation; either version 2 of the License, or
+#   (at your option) any later version.
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
 
-------------------------------------------------------------------------------
+#   You should have received a copy of the GNU General Public License along
+#   with this program; if not, write to the Free Software Foundation, Inc.,
+#   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-Run Gaussian Filter from Scipy on P/D/I/SPW.
+# ------------------------------------------------------------------------------
+
+"""Run Gaussian Filter from Scipy on P/D/I/SPW.
 
 @author Balaji Ramalingam
 <a href="mailto:b.ramalingam@dundee.ac.uk">b.ramalingam@dundee.ac.uk</a>
 """
 
 import omero
-from omero.model import PlateI, ScreenI
 
-import os
-import sys
-import subprocess
-import re
-import tempfile
-import platform
-import glob
-import smtplib
-# For guessing MIME type based on file name extension
-import mimetypes
-import datetime
-
-import omero
+import time
 import omero.scripts as scripts
 from omero.rtypes import wrap, rlong
-from omero.gateway import OriginalFileWrapper, MapAnnotationWrapper
+from omero.gateway import MapAnnotationWrapper
 from omero.gateway import BlitzGateway
 from omero.rtypes import *  # noqa
-from omeroweb.webgateway.marshal import imageMarshal
+# from omeroweb.webgateway.marshal import imageMarshal
 
 import json
-import ConfigParser
 from cStringIO import StringIO
 
-import scipy
 import scipy.ndimage as spi
 
 
 def run(conn, params):
     """
-    For each image defined in the script parameters run the correlation
-    analyser and load the result into OMERO.
+    For each image, apply filter and load the result into OMERO.
+
     Returns the number of images processed or -1 if there is a
     parameter error.
     @param conn   The BlitzGateway connection
     @param params The script parameters
     """
-
     print "Parameters = %s" % params
 
     if not params.get("Kernel_Window_Size"):
@@ -117,8 +101,7 @@ def run(conn, params):
 
 
 def planeGen(image, zctList, window, sigma):
-    """generator will yield planes"""
-
+    """Generator will yield planes."""
     planes = image.getPrimaryPixels().getPlanes(zctList)
     for p in planes:
         truncated_param = (((window - 1)/2)-0.5)/sigma
@@ -128,7 +111,7 @@ def planeGen(image, zctList, window, sigma):
 
 
 def add_map_annotation(conn, image, params):
-
+    """Add key-value pairs from params onto image."""
     window_size = params.get("Kernel_Window_Size")
     sigma = params.get("Sigma")
     key_value_data = [["Kernel Window Size", str(window_size)],
@@ -146,10 +129,7 @@ def add_map_annotation(conn, image, params):
 
 
 def get_panel_json(image, x, y, width, height, channel=None):
-    """
-    Export the results as OMERO.figure
-    """
-
+    """Export the results as OMERO.figure."""
     rv = imageMarshal(image)
 
     if channel is not None:
@@ -181,8 +161,120 @@ def get_panel_json(image, x, y, width, height, channel=None):
     return img_json
 
 
-def get_labels_json(panel_json, column, row):
+def channelMarshal(channel):
+    """
+    Return a dict with all there is to know about a channel.
 
+    @param channel:     L{omero.gateway.ChannelWrapper}
+    @return:            Dict
+    """
+    chan = {'emissionWave': channel.getEmissionWave(),
+            'label': channel.getLabel(),
+            'color': channel.getColor().getHtml(),
+            # 'reverseIntensity' is deprecated. Use 'inverted'
+            'inverted': channel.isInverted(),
+            'reverseIntensity': channel.isInverted(),
+            'window': {'min': channel.getWindowMin(),
+                       'max': channel.getWindowMax(),
+                       'start': channel.getWindowStart(),
+                       'end': channel.getWindowEnd()},
+            'active': channel.isActive()}
+    lut = channel.getLut()
+    if lut and len(lut) > 0:
+        chan['lut'] = lut
+    return chan
+
+
+def imageMarshal(image, key=None, request=None):
+    """
+    Return a dict with pretty much everything we know and care about an image.
+
+    @param image:   L{omero.gateway.ImageWrapper}
+    @param key:     key of specific attributes to select
+    @return:        Dict
+    """
+    image.loadRenderOptions()
+    pr = image.getProject()
+    ds = None
+    wellsample = None
+    well = None
+    parents = image.listParents()
+    if parents is not None:
+        datasets = [p for p in parents if p.OMERO_CLASS == 'Dataset']
+        well_smpls = [p for p in parents if p.OMERO_CLASS == 'WellSample']
+        if len(datasets) == 1:
+            ds = datasets[0]
+        if len(well_smpls) == 1:
+            if well_smpls[0].well is not None:
+                well = well_smpls[0].well
+
+    rv = {
+        'id': image.id,
+        'meta': {
+            'imageName': image.name or '',
+            'imageDescription': image.description or '',
+            'imageAuthor': image.getAuthor(),
+            'projectName': pr and pr.name or 'Multiple',
+            'projectId': pr and pr.id or None,
+            'projectDescription': pr and pr.description or '',
+            'datasetName': ds and ds.name or 'Multiple',
+            'datasetId': ds and ds.id or None,
+            'datasetDescription': ds and ds.description or '',
+            'wellSampleId': wellsample and wellsample.id or '',
+            'wellId': well and well.id.val or '',
+            'imageTimestamp': time.mktime(
+                image.getDate().timetuple()),
+            'imageId': image.id,
+            'pixelsType': image.getPixelsType(),
+            },
+        'perms': {
+            'canAnnotate': image.canAnnotate(),
+            'canEdit': image.canEdit(),
+            'canDelete': image.canDelete(),
+            'canLink': image.canLink()
+            }
+        }
+
+    image._prepareRenderingEngine()
+
+    def pixel_size_in_microns(method):
+        try:
+            size = method('MICROMETER')
+            return size.getValue() if size else None
+        except:
+            return None
+
+    rv.update({
+        'size': {'width': image.getSizeX(),
+                 'height': image.getSizeY(),
+                 'z': image.getSizeZ(),
+                 't': image.getSizeT(),
+                 'c': image.getSizeC()},
+        'pixel_size': {'x': pixel_size_in_microns(image.getPixelSizeX),
+                       'y': pixel_size_in_microns(image.getPixelSizeY),
+                       'z': pixel_size_in_microns(image.getPixelSizeZ)},
+        })
+
+    try:
+        rv['pixel_range'] = image.getPixelRange()
+        rv['channels'] = map(lambda x: channelMarshal(x),
+                             image.getChannels())
+        rv['split_channel'] = image.splitChannelDims()
+        rv['rdefs'] = {'model': (image.isGreyscaleRenderingModel() and
+                                 'greyscale' or 'color'),
+                       'projection': image.getProjection(),
+                       'defaultZ': image._re.getDefaultZ(),
+                       'defaultT': image._re.getDefaultT(),
+                       'invertAxis': image.isInvertedAxis()}
+
+    except AttributeError:
+        rv = None
+        raise
+    return rv
+
+
+def get_labels_json(panel_json, column, row):
+    """Return dict of labels data for figure JSON."""
     labels = []
 
     channels = panel_json['channels']
@@ -201,7 +293,7 @@ def get_labels_json(panel_json, column, row):
 
 
 def create_figure_file(conn, image_ids):
-
+    """Create an OMERO.figure file with the specified images."""
     width = 512/10
     height = 512/10
     spacing_x = 512/50
@@ -221,7 +313,6 @@ def create_figure_file(conn, image_ids):
     curr_x = 0
     curr_y = 0
     panels_json = []
-    column_count = 2
     offset = 10
 
     gid = -1
