@@ -104,9 +104,7 @@ def planeGen(image, zctList, window, sigma):
     """Generator will yield planes."""
     planes = image.getPrimaryPixels().getPlanes(zctList)
     for p in planes:
-        truncated_param = (((window - 1)/2)-0.5)/sigma
-        data = spi.filters.gaussian_filter(p, sigma=sigma,
-                                           truncate=truncated_param)
+        data = spi.filters.gaussian_filter(p, sigma=sigma)
         yield data
 
 
