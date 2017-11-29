@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """
 -----------------------------------------------------------------------------
   Copyright (C) 2017 University of Dundee. All rights reserved.
@@ -68,13 +66,11 @@ from ij import IJ
 # OMERO Server details
 HOST = "outreach.openmicroscopy.org"
 PORT = 4064
-PASSWORD = "changeMe"
 group_id = "-1"
-
 #  parameters to edit
 dataset_id = "changeMe"
 USERNAME = "changeMe"
-
+PASSWORD = "changeMe"
 
 def open_image_plus(HOST, USERNAME, PASSWORD, PORT, group_id, image_id):
     "Open the image using the Bio-Formats Importer"
