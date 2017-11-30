@@ -63,11 +63,11 @@ from ij import IJ
 # =====
 
 # OMERO Server details
-HOST = "ome-training-outreach.openmicroscopy.org"
+HOST = "outreach.openmicroscopy.org"
 PORT = 4064
 group_id = "-1"
 #  parameters to edit
-dataset_id = "change_me"
+dataset_id = "1"
 USERNAME = "change_me"
 PASSWORD = "change_me"
 
