@@ -172,10 +172,11 @@ def run_script():
     dataTypes = [rstring('Image'), rstring('Dataset')]
 
     client = scripts.client(
-        'omero_imagej_script.py',
+        'Omero_Imagej_Macro.py',
         """
         This script runs an ImageJ macro and imports the generated images
-        to OMERO using OMERO DropBox
+        to OMERO using OMERO.DropBox.
+        See http://help.openmicroscopy.org/dropbox.html
         """,
 
         scripts.String(
