@@ -34,7 +34,7 @@ from omero.rtypes import rstring, rlong, robject
 
 
 # Path to the Fiji, to be modified
-IJ_CLASSPATH = ""
+IJ_CLASSPATH = "/opt/omero/Fiji/Fiji.app/ImageJ-linux64"
 DROPBOX = "/OMERO/DropBox/"
 
 MACRO_TEXT = """
@@ -78,7 +78,7 @@ def run_macro(conn, client, command_args):
     new_images = run_imagej_macro(conn, ome_tiff, tmp_dir)
 
     # Delete the directories
-    # shutil.rmtree(tmp_dir)
+    shutil.rmtree(tmp_dir)
 
     return "macro run"
 
