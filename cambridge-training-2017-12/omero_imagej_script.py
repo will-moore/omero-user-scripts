@@ -34,7 +34,7 @@ from omero.rtypes import rstring, rlong, robject
 
 
 # Path to the Fiji, to be modified
-IJ_CLASSPATH = "/Users/jmarie/Documents/Fiji.app/Contents/MacOS/ImageJ-macosx"
+IJ_CLASSPATH = ""
 DROPBOX = "/OMERO/DropBox/"
 
 MACRO_TEXT = """
