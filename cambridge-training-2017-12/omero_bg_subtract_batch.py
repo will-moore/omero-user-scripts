@@ -63,14 +63,13 @@ from ij import IJ
 # =====
 
 # OMERO Server details
-HOST = "outreach.openmicroscopy.org"
-HOST = "localhost"
+HOST = "ome-training-outreach.openmicroscopy.org"
 PORT = 4064
 group_id = "-1"
 #  parameters to edit
-dataset_id = "1"
-USERNAME = "root"
-PASSWORD = "omero_root_password"
+dataset_id = "change_me"
+USERNAME = "change_me"
+PASSWORD = "change_me"
 
 def open_image_plus(HOST, USERNAME, PASSWORD, PORT, group_id, image_id):
     "Open the image using the Bio-Formats Importer"
