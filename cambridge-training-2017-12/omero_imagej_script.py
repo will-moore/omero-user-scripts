@@ -35,8 +35,12 @@ from omero.rtypes import rstring, rlong, robject
 
 # Path to the Fiji, to be modified
 IJ_CLASSPATH = "/Users/jmarie/Documents/Fiji.app/Contents/MacOS/ImageJ-macosx"
-SERVER_PATH = ""
 DROPBOX = "/OMERO/DropBox/"
+
+MACRO_TEXT = """
+run("Enhance Contrast...", "saturated=0.3");
+run("Subtract Background...", "rolling=50 stack");
+"""
 
 def run_macro(conn, client, command_args):
     """
@@ -65,36 +69,15 @@ def run_macro(conn, client, command_args):
                 for image in dataset.listChildren():
                     images.append(image)
 
-    # Retrieve the macro to use
-    macro_file_name = command_args["Macro_File_Name"]
-    if not macro_file_name.endswith('.ijm'):
-        macro_file_name = '%s.ijm' % macro_file_name
-
-
-    object_id = object_ids[0]
-    of = get_original_file(conn, data_type, object_id, macro_file_name)
-
-    # Read the macro
-    store = conn.createRawFileStore()
-    file_path = scriptUtil.download_file(store, of)
-
     # Read the images to analyse into the specified directory
-    dir_images = tempfile.mkdtemp()
-    ome_tiff = load_images(conn, images, dir_images)
-
-    # Run the macro
     tmp_dir = tempfile.mkdtemp()
-    new_images = run_imagej_macro(conn, file_path, ome_tiff, tmp_dir)
+    ome_tiff = load_images(conn, images, tmp_dir)
 
-    # Create a dataset to add the images to
-    dataset = omero.model.DatasetI()
-    dataset.name = rstring('Results_for_%s' % macro_file_name)
-    dataset = conn.getUpdateService().saveAndReturnObject(dataset)
-    # Upload the results back to OMERO
-    # upload_generated_images(client, tmp_dir, dataset.getId().getValue())
+    # Run the macro. The resulted images will be added to
+    # OMERO.dropbox
+    new_images = run_imagej_macro(conn, ome_tiff, tmp_dir)
 
     # Delete the directories
-    # shutil.rmtree(dir_images)
     # shutil.rmtree(tmp_dir)
 
     return "macro run"
@@ -129,24 +112,7 @@ def load_images(conn, images, tmp_dir):
     return ome_tiff
 
 
-def upload_generated_images(client, path_to_directory, dataset_id):
-    """
-    Import to OMERO the generated images in the specified folder
-    """
-
-    host = client.getProperty("omero.host")
-    port = client.getProperty("omero.port")
-    key = client.getSessionId()
-    print "Script command = %s" % client.getProperties()
-    args = [SERVER_PATH, 'import', '-s', 'localhost', '-p', port, '-k', key,
-            '-d', str(dataset_id), path_to_directory]
-    import_prc = subprocess.Popen(args, stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE)
-    import_prc.wait()
-    
-
-
-def run_imagej_macro(conn, file_path, ome_tiff, tmp_dir):
+def run_imagej_macro(conn, ome_tiff, tmp_dir):
     """
     Run the macro on the selected images
     The results will be saved in the specified directory
@@ -154,17 +120,14 @@ def run_imagej_macro(conn, file_path, ome_tiff, tmp_dir):
 
     ijm_path = os.path.join(tmp_dir, "open_file.ijm")
 
-    with open(file_path, 'r') as f:
-        macro_text = f.read()
-
     # write the macro to a known location that we can pass to ImageJ
     value = """
 setBatchMode(true);
 run("Bio-Formats Macro Extensions");
 """
     new_images = []
-    user = "root"
-    box_path = os.path.join(DROPBOX, user)
+    box_path = os.path.join(DROPBOX, conn.getUser().omeName)
+    print box_path
     with open(ijm_path, 'wb') as ff:
         # run the macro on each ome_tiff
         for i, image in enumerate(ome_tiff):
@@ -176,7 +139,7 @@ run("Bio-Formats Macro Extensions");
             ff.write("""%s
                 imps = Ext.openImagePlus("%s")
             """ % (header, image))
-            ff.write(macro_text)
+            ff.write(MACRO_TEXT)
             # the image has already ome.tiff as an extension
             new_name = os.path.basename(image)
             new_image_path = os.path.join(box_path, new_name)
@@ -186,8 +149,6 @@ run("Bio-Formats Macro Extensions");
             new_images.append(new_image_path)
     try:
         args = [IJ_CLASSPATH, "--headless", "-macro", ijm_path]
-        # debug
-        # args = [IJ_CLASSPATH, "--headless", "-macro", ijm_path]
         cmd = " ".join(args)
         print "Script command = %s" % cmd
 
@@ -202,36 +163,6 @@ run("Bio-Formats Macro Extensions");
     return new_images
 
 
-def get_original_file(conn, object_type, object_id, file_ann_name=None):
-    """
-    Retrieve the file containing the macro.
-    """
-    if object_type == "Dataset":
-        omero_object = conn.getObject("Dataset", int(object_id))
-        if omero_object is None:
-            sys.stderr.write("Error: Dataset does not exist.\n")
-            sys.exit(1)
-    else:
-        omero_object = conn.getObject("Image", int(object_id))
-        if omero_object is None:
-            sys.stderr.write("Error: Image does not exist.\n")
-            sys.exit(1)
-
-    file_ann = None
-
-    for ann in omero_object.listAnnotations():
-        if isinstance(ann, omero.gateway.FileAnnotationWrapper):
-            file_name = ann.getFile().getName()
-            if (file_ann_name is None and file_name.endswith(".ijm")) or (
-                    file_ann_name == file_name):
-                file_ann = ann
-    if file_ann is None:
-        sys.stderr.write("Error: File does not exist.\n")
-        sys.exit(1)
-
-    return file_ann.getFile()._obj
-
-
 def run_script():
     """
     The main entry point of the script, as called by the client via the
@@ -243,7 +174,8 @@ def run_script():
     client = scripts.client(
         'omero_imagej_script.py',
         """
-        This script processes an ijm file, attached to an image or dataset,
+        This script runs an ImageJ macro and imports the generated images
+        to OMERO using OMERO DropBox
         """,
 
         scripts.String(
@@ -254,10 +186,6 @@ def run_script():
         scripts.List(
             "IDs", optional=False, grouping="02",
             description="List of IDs").ofType(rlong(0)),
-
-        scripts.String(
-            "Macro_File_Name", optional=False, grouping="03",
-            description="The name of the macro e.g. substract_macro"),
 
         authors=["OME team"],
         institutions=["University of Dundee"],
