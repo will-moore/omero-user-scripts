@@ -30,7 +30,7 @@ import omero
 import time
 import omero.scripts as scripts
 from omero.rtypes import wrap, rlong
-from omero.gateway import MapAnnotationWrapper
+from omero.gateway import MapAnnotationWrapper, DatasetWrapper
 from omero.gateway import BlitzGateway
 from omero.rtypes import *  # noqa
 # from omeroweb.webgateway.marshal import imageMarshal
@@ -50,21 +50,10 @@ def run(conn, params):
     @param conn   The BlitzGateway connection
     @param params The script parameters
     """
-    print "Parameters = %s" % params
 
-    if not params.get("Kernel_Window_Size"):
-        print "Please enter a valid window size for the Gaussian kernel"
-        return -1
+    # Get parameters. These are 'required' so we know they will be populated
     window_size = params.get("Kernel_Window_Size")
-
-    if not params.get("Sigma"):
-        print "Please enter a valid value for Sigma (>0)"
-        return -1
     sigma = params.get("Sigma")
-
-    if not params.get("IDs"):
-        print "Please enter a valid omero_object (Project/Dataset/Image) Id"
-        return -1
 
     images = []
 
@@ -74,6 +63,16 @@ def run(conn, params):
             if dataset:
                 for image in dataset.listChildren():
                     images.append(image)
+    elif params.get("Data_Type") == 'Image':
+        images = list(conn.getObjects('Image', params["IDs"]))
+
+    if len(images) == 0:
+        return None
+
+    # Create new Dataset
+    new_dataset = DatasetWrapper(conn, omero.model.DatasetI())
+    new_dataset.setName('Scipy_Gaussian_Filter')
+    new_dataset.save()
 
     # Extract images
     image_ids = []
@@ -92,13 +91,13 @@ def run(conn, params):
         name = image.getName() + "_gaussian"
         i = conn.createImageFromNumpySeq(plane, name, sizeZ, sizeC,
                                          sizeT, description="Gaussian Filter",
-                                         dataset=dataset,
+                                         dataset=new_dataset,
                                          sourceImageId=image.id)
 
         image_ids.append(i.getId())
 
         add_map_annotation(conn, i, params)
-    return image_ids
+    return image_ids, new_dataset
 
 
 def planeGen(image, zctList, window, sigma):
@@ -357,7 +356,7 @@ def create_figure_file(conn, image_ids):
 
 
 if __name__ == "__main__":
-    dataTypes = [rstring('Dataset')]
+    dataTypes = [rstring('Dataset'), rstring('Image')]
     client = scripts.client(
         'Scipy_Gaussian_Filter.py',
         """
@@ -401,13 +400,19 @@ if __name__ == "__main__":
         # wrap client to use the Blitz Gateway
         conn = BlitzGateway(client_obj=client)
         # # Call the main script - returns the number of images processed
-        image_ids = run(conn, scriptParams)
+        result = run(conn, scriptParams)
+        if result is None:
+            message = "No images found"
+        else:
+            image_ids, dataset = result
 
-        message = "created %s images" % len(image_ids)
+            message = "Created %s images" % len(image_ids)
 
-        if scriptParams["Create_Omero_Figure"]:
-            create_figure_file(conn, image_ids)
-            message += " and new Figure"
+            if scriptParams["Create_Omero_Figure"]:
+                create_figure_file(conn, image_ids)
+                message += " and new Figure"
+
+            client.setOutput("Dataset", robject(dataset._obj))
 
         client.setOutput("Message", rstring(message))
 
