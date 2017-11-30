@@ -134,7 +134,6 @@ def get_panel_json(image, x, y, width, height, channel=None):
     if channel is not None:
         for idx, ch in enumerate(rv['channels']):
             ch['active'] = idx == channel
-            ch['color'] = 'ffffff'
 
     img_json = {
         "labels": [],
@@ -293,19 +292,17 @@ def get_labels_json(panel_json, column, row):
 
 def create_figure_file(conn, image_ids):
     """Create an OMERO.figure file with the specified images."""
-    width = 512/5
-    height = 512/5
-    spacing_x = 512/50
-    spacing_y = 512/50
-    page_width = (width + spacing_x) * (5) * 1.25
-    page_height = (height + spacing_y) * (len(image_ids)) * 1.25
+    width = 100
+    height = 100
+    spacing_x = 5
+    spacing_y = 5
 
     JSON_FILEANN_NS = "omero.web.figure.json"
 
     figure_json = {"version": 2,
-                   "paper_width": page_width,
-                   "paper_height": page_height,
-                   "page_size": "mm",
+                   "paper_width": 595,
+                   "paper_height": 842,
+                   "page_size": "A4",
                    "figureName": "Scipy Gaussian Filter",
                    }
 
@@ -406,10 +403,12 @@ if __name__ == "__main__":
         # # Call the main script - returns the number of images processed
         image_ids = run(conn, scriptParams)
 
+        message = "created %s images" % len(image_ids)
+
         if scriptParams["Create_Omero_Figure"]:
             create_figure_file(conn, image_ids)
+            message += " and new Figure"
 
-        message = "Done"
         client.setOutput("Message", rstring(message))
 
     finally:
