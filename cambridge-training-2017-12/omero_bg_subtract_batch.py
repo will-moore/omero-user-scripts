@@ -67,9 +67,9 @@ HOST = "outreach.openmicroscopy.org"
 PORT = 4064
 group_id = "-1"
 #  parameters to edit
-dataset_id = "1"
-USERNAME = "change_me"
-PASSWORD = "change_me"
+dataset_id = "1022"
+USERNAME = "username"
+PASSWORD = "password"
 
 def open_image_plus(HOST, USERNAME, PASSWORD, PORT, group_id, image_id):
     "Open the image using the Bio-Formats Importer"
