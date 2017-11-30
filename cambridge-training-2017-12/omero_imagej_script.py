@@ -34,8 +34,9 @@ from omero.rtypes import rstring, rlong, robject
 
 
 # Path to the Fiji, to be modified
-IJ_CLASSPATH = ""
+IJ_CLASSPATH = "/Users/jmarie/Documents/Fiji.app/Contents/MacOS/ImageJ-macosx"
 SERVER_PATH = ""
+DROPBOX = "/OMERO/DropBox/"
 
 def run_macro(conn, client, command_args):
     """
@@ -90,7 +91,7 @@ def run_macro(conn, client, command_args):
     dataset.name = rstring('Results_for_%s' % macro_file_name)
     dataset = conn.getUpdateService().saveAndReturnObject(dataset)
     # Upload the results back to OMERO
-    upload_generated_images(client, tmp_dir, dataset.getId().getValue())
+    # upload_generated_images(client, tmp_dir, dataset.getId().getValue())
 
     # Delete the directories
     # shutil.rmtree(dir_images)
@@ -162,6 +163,8 @@ setBatchMode(true);
 run("Bio-Formats Macro Extensions");
 """
     new_images = []
+    user = "root"
+    box_path = os.path.join(DROPBOX, user)
     with open(ijm_path, 'wb') as ff:
         # run the macro on each ome_tiff
         for i, image in enumerate(ome_tiff):
@@ -176,7 +179,7 @@ run("Bio-Formats Macro Extensions");
             ff.write(macro_text)
             # the image has already ome.tiff as an extension
             new_name = os.path.basename(image)
-            new_image_path = os.path.join(tmp_dir, new_name)
+            new_image_path = os.path.join(box_path, new_name)
             print new_image_path
             ff.write("""run("Bio-Formats Exporter", "save=%s export compression=Uncompressed");
                      run("Quit");""" % new_image_path)
