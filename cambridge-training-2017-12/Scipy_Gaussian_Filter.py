@@ -92,7 +92,8 @@ def run(conn, params):
         name = image.getName() + "_gaussian"
         i = conn.createImageFromNumpySeq(plane, name, sizeZ, sizeC,
                                          sizeT, description="Gaussian Filter",
-                                         dataset=dataset)
+                                         dataset=dataset,
+                                         sourceImageId=image.id)
 
         image_ids.append(i.getId())
 
