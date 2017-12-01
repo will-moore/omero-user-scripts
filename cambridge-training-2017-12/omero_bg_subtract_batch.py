@@ -17,18 +17,19 @@
 #
 #------------------------------------------------------------------------------
 
-# This script uses ImageJ to Subtract Background.
+# This Jython script uses ImageJ to Subtract Background.
 # The purpose of the script is to be used in the Scripting Dialog
 # of Fiji.
+# Error handling is omitted to ease the reading of the script but this should be added
+# if used in production to make sure the services are closed
+# Information can be found at https://docs.openmicroscopy.org/omero/5.4.1/developers/Java.html
 
 import os
 from os import path
 
 from java.lang import Long
 from java.lang import String
-from java.lang.Long import longValue
 from java.util import ArrayList
-from jarray import array
 from java.lang.reflect import Array
 import java
 
@@ -36,16 +37,11 @@ import java
 from omero.gateway import Gateway
 from omero.gateway import LoginCredentials
 from omero.gateway import SecurityContext
-from omero.gateway.exception import DSAccessException
-from omero.gateway.exception import DSOutOfServiceException
 from omero.gateway.facility import BrowseFacility
 from omero.gateway.facility import DataManagerFacility
 from omero.gateway.model import DatasetData
-from omero.gateway.model import ExperimenterData
-from omero.gateway.model import ProjectData
 from omero.log import Logger
 from omero.log import SimpleLogger
-from omero.model import Pixels
 
 from ome.formats.importer import ImportConfig
 from ome.formats.importer import OMEROWrapper
@@ -154,6 +150,8 @@ def upload_image(path, gateway, id):
 
 # Prototype analysis example
 gateway = connect_to_omero()
+
+# Retrieve the images contained in the specified dataset
 image_ids = get_image_ids(gateway, dataset_id)
 
 # Create a dataset to store the newly created images will be added
@@ -164,10 +162,13 @@ dm = gateway.getFacility(DataManagerFacility)
 user = gateway.getLoggedInUser()
 ctx = SecurityContext(user.getGroupId())
 d = dm.createDataset(ctx, d, None)
+# Exercise 1 changes to be added here
 
+# Loop though each image
 for image_id in image_ids:
     print(""+image_id)
     open_image_plus(HOST, USERNAME, PASSWORD, PORT, group_id, image_id)
+    # section to modify cf. Exercise 2
     IJ.run("Enhance Contrast...", "saturated=0.3")
     IJ.run("Subtract Background...", "rolling=50 stack")
 
@@ -182,7 +183,7 @@ for image_id in image_ids:
 
     # Upload the generated OME-TIFF to OMERO
     print("uploading...")
-    str2d = java.lang.reflect.Array.newInstance(java.lang.String, [1])
+    str2d = Array.newInstance(String, [1])
     str2d[0] = path
     success = upload_image(str2d, gateway, d.getId())
     # delete the local OME-TIFF image
@@ -190,4 +191,5 @@ for image_id in image_ids:
     print("imported")
 
 print("Done")
+# Close the connection
 gateway.disconnect()
