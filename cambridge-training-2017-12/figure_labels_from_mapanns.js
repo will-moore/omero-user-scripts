@@ -19,9 +19,9 @@ figureModel.getSelected().forEach(function(p){
             var labels = a.values.map(function(keyValue){
                 return {
                     'text': keyValue.join(": "),
-                    'size': 4,
-                    'position': "top",
-                    'color': "000000"
+                    'size': 8,
+                    'position': "topleft",
+                    'color': "ffffff"
                 }
             });
             p.add_labels(labels);
