@@ -42,6 +42,8 @@ from omero.gateway import LoginCredentials
 from omero.gateway import SecurityContext
 from omero.gateway.facility import BrowseFacility
 from omero.gateway.facility import ROIFacility
+from omero.gateway.model import EllipseData
+from omero.gateway.model import PointData
 from omero.gateway.model import RectangleData
 from omero.log import Logger
 from omero.log import SimpleLogger
@@ -57,7 +59,7 @@ import loci.common
 from loci.formats.in import DefaultMetadataOptions
 from loci.formats.in import MetadataLevel
 from ij import IJ, ImagePlus
-from ij.gui import Roi
+from ij.gui import OvalRoi, PointRoi, Roi 
 from ij.process import ByteProcessor
 from ij.plugin.frame import RoiManager
 
@@ -120,6 +122,7 @@ def get_images(gateway, dataset_id):
     ids.add(val)
     return browse.getImagesForDatasets(ctx, ids)
 
+
 def get_rois(gateway, image_id):
     "List all rois associated to an Image"
 
@@ -128,10 +131,15 @@ def get_rois(gateway, image_id):
     ctx = SecurityContext(user.getGroupId())
     return browse.loadROIs(ctx, image_id)
 
+
 def format_shape(data, ij_shape):
     "Convert settings e.g. color"
     settings = data.getShapeSettings()
     ij_shape.setStrokeColor(settings.getStroke())
+    ij_shape.setFillColor(settings.getFill())
+    stroke = settings.getStrokeWidth(None)
+    if stroke is not None:
+        ij_shape.setStrokeWidth(settings.getStrokeWidth(None).getValue())
 
 
 def convert_rectangle(data):
@@ -141,12 +149,27 @@ def convert_rectangle(data):
     format_shape(data, shape)
     return shape
 
-def convert_omero_rois_to_ij_rois(rois_results, image):
+
+def convert_ellipse(data):
+    "Convert an ellipse into an imageJ ellipse"
+    width = data.getRadiusX()
+    height = data.getRadiusY()
+    shape = OvalRoi(data.getX()-width, data.getY()-height, 2*width, 2*height)
+    format_shape(data, shape)
+    return shape
+
+
+def convert_point(data):
+    "Convert a point into an imageJ point"
+    shape = PointRoi(data.getX(), data.getY())
+    format_shape(data, shape)
+    return shape
+
+
+def convert_omero_rois_to_ij_rois(rois_results):
     "Convert the omero ROI into imageJ ROI"
    
     output = []
-    manager = RoiManager()
-    count = 0
     for roi_result in rois_results:
         rois = roi_result.getROIs()
         for roi in rois:
@@ -155,10 +178,11 @@ def convert_omero_rois_to_ij_rois(rois_results, image):
                 for shape in s:
                     c = None
                     if isinstance(shape, RectangleData):
-                        c = convert_rectangle(shape)
-                    if c is not None:
-                        manager.add(image, c, count)
-                        count = count+1
+                        output.append(convert_rectangle(shape))
+                    elif isinstance(shape, EllipseData):
+                        output.append(convert_ellipse(shape))
+                    elif isinstance(shape, PointData):
+                        output.append(convert_point(shape)) 
     return output
 
 # Connect to OMERO
@@ -172,7 +196,13 @@ for image in images:
     print(String.valueOf(image.getId()))
     rois = get_rois(gateway, image.getId())
     open_image_plus(HOST, USERNAME, PASSWORD, PORT, group_id, String.valueOf(image.getId()))
-    imp = IJ.getImage()
-    output = convert_omero_rois_to_ij_rois(rois, imp)
+    image = IJ.getImage()
+    output = convert_omero_rois_to_ij_rois(rois)
+    manager = RoiManager()
+    count = 0
+    for i in output:
+        manager.add(image, i, count)
+        count = count+1
+
 
 gateway.disconnect()
