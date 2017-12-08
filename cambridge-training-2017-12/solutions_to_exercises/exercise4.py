@@ -26,12 +26,8 @@
 import os
 from os import path
 
-from javax.imageio import ImageIO
-from java.awt.image import BufferedImage
-from java.io import ByteArrayInputStream
 from java.lang import Long
 from java.lang import String
-from java.util import ArrayList
 import java
 
 
@@ -44,6 +40,7 @@ from omero.gateway.facility import BrowseFacility
 from omero.gateway.facility import ROIFacility
 from omero.gateway.model import EllipseData
 from omero.gateway.model import PointData
+from omero.gateway.model import PolygonData
 from omero.gateway.model import RectangleData
 from omero.log import Logger
 from omero.log import SimpleLogger
@@ -59,7 +56,7 @@ import loci.common
 from loci.formats.in import DefaultMetadataOptions
 from loci.formats.in import MetadataLevel
 from ij import IJ, ImagePlus
-from ij.gui import OvalRoi, PointRoi, Roi 
+from ij.gui import OvalRoi, PointRoi, PolygonRoi, Roi 
 from ij.process import ByteProcessor
 from ij.plugin.frame import RoiManager
 
@@ -72,7 +69,7 @@ HOST = "outreach.openmicroscopy.org"
 PORT = 4064
 group_id = "-1"
 #  parameters to edit
-dataset_id = "21552"
+image_id = "9443"
 USERNAME = "username"
 PASSWORD = "password"
 
@@ -111,16 +108,13 @@ def connect_to_omero():
     return gateway
 
 
-def get_images(gateway, dataset_id):
-    "List all image's ids contained in a Dataset"
+def get_image(gateway, image_id):
+    "Load the image"
 
     browse = gateway.getFacility(BrowseFacility)
     user = gateway.getLoggedInUser()
     ctx = SecurityContext(user.getGroupId())
-    ids = ArrayList(1)
-    val = Long(dataset_id)
-    ids.add(val)
-    return browse.getImagesForDatasets(ctx, ids)
+    return browse.getImage(ctx, Long(image_id))
 
 
 def get_rois(gateway, image_id):
@@ -182,27 +176,23 @@ def convert_omero_rois_to_ij_rois(rois_results):
                     elif isinstance(shape, EllipseData):
                         output.append(convert_ellipse(shape))
                     elif isinstance(shape, PointData):
-                        output.append(convert_point(shape)) 
+                        output.append(convert_point(shape))
     return output
 
 # Connect to OMERO
 gateway = connect_to_omero()
 
-# Retrieve the images contained in the specified dataset
-images = get_images(gateway, dataset_id)
+# Retrieve the image
+image = get_image(gateway, image_id)
 
-# loop through the images
-for image in images:
-    print(String.valueOf(image.getId()))
-    rois = get_rois(gateway, image.getId())
-    open_image_plus(HOST, USERNAME, PASSWORD, PORT, group_id, String.valueOf(image.getId()))
-    image = IJ.getImage()
-    output = convert_omero_rois_to_ij_rois(rois)
-    manager = RoiManager()
-    count = 0
-    for i in output:
-        manager.add(image, i, count)
-        count = count+1
-
+rois = get_rois(gateway, image.getId())
+open_image_plus(HOST, USERNAME, PASSWORD, PORT, group_id, String.valueOf(image.getId()))
+image = IJ.getImage()
+output = convert_omero_rois_to_ij_rois(rois)
+manager = RoiManager()
+count = 0
+for i in output:
+    manager.add(image, i, count)
+    count = count+1
 
 gateway.disconnect()
