@@ -23,9 +23,6 @@
 # if used in production to make sure the services are closed
 # Information can be found https://docs.openmicroscopy.org/omero/5.4.1/developers/Java.html
 
-import os
-from os import path
-
 from java.lang import Float, Long
 from java.lang import String
 from java.lang.reflect import Array
@@ -47,18 +44,9 @@ from omero.log import Logger
 from omero.log import SimpleLogger
 from omero.model import Pixels
 
-from ome.formats.importer import ImportConfig
-from ome.formats.importer import OMEROWrapper
-from ome.formats.importer import ImportLibrary
-from ome.formats.importer import ImportCandidates
-from ome.formats.importer.cli import ErrorHandler
-from ome.formats.importer.cli import LoggingImportMonitor
-import loci.common
-from loci.formats.in import DefaultMetadataOptions
-from loci.formats.in import MetadataLevel
+
 from ij import IJ, ImagePlus
 from ij.gui import Line, OvalRoi, PointRoi, Roi 
-from ij.process import ByteProcessor
 from ij.plugin.frame import RoiManager
 
 
@@ -70,7 +58,7 @@ HOST = "outreach.openmicroscopy.org"
 PORT = 4064
 group_id = "-1"
 #  parameters to edit
-image_id = "9443"
+image_id = "1001"
 USERNAME = "username"
 PASSWORD = "password"
 
