@@ -1,4 +1,4 @@
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 #  Copyright (C) 2017 University of Dundee. All rights reserved.
 #
 #
@@ -15,13 +15,14 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 #  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 # This script loads the ROIs saved into OMERO and convert them into ImageJ ROIs
 # The rois are then added to the roi manager
-# Error handling is omitted to ease the reading of the script but this should be added
-# if used in production to make sure the services are closed
-# Information can be found https://docs.openmicroscopy.org/omero/5.4.1/developers/Java.html
+# Error handling is omitted to ease the reading of the script but this should
+# be added if used in production to make sure the services are closed
+# Information can be found at
+# https://docs.openmicroscopy.org/omero/5.4.1/developers/Java.html
 
 from java.lang import Float, Long
 from java.lang import String
@@ -46,7 +47,7 @@ from omero.model import Pixels
 
 
 from ij import IJ, ImagePlus
-from ij.gui import Line, OvalRoi, PointRoi, Roi 
+from ij.gui import Line, OvalRoi, PointRoi, Roi
 from ij.plugin.frame import RoiManager
 
 
@@ -62,7 +63,9 @@ image_id = "1001"
 USERNAME = "username"
 PASSWORD = "password"
 
-def open_image_plus(HOST, USERNAME, PASSWORD, PORT, group_id, image_id):
+
+def open_image_plus(HOST, USERNAME, PASSWORD, PORT, group_id,
+                    image_id):
     "Open the image using the Bio-Formats Importer"
 
     options = ""
@@ -127,7 +130,7 @@ def format_shape(data, ij_shape):
 
 def convert_rectangle(data):
     "Convert a rectangle into an imageJ rectangle"
-    
+
     shape = Roi(data.getX(), data.getY(), data.getWidth(), data.getHeight())
     format_shape(data, shape)
     return shape
@@ -158,7 +161,7 @@ def convert_line(data):
 
 def convert_omero_rois_to_ij_rois(rois_results):
     "Convert the omero ROI into imageJ ROI"
-   
+
     output = []
     for roi_result in rois_results:
         rois = roi_result.getROIs()
@@ -177,6 +180,7 @@ def convert_omero_rois_to_ij_rois(rois_results):
                         output.append(convert_line(shape))
     return output
 
+
 # Connect to OMERO
 gateway = connect_to_omero()
 
@@ -184,7 +188,7 @@ gateway = connect_to_omero()
 image = get_image(gateway, image_id)
 
 rois = get_rois(gateway, image.getId())
-open_image_plus(HOST, USERNAME, PASSWORD, PORT, group_id, String.valueOf(image.getId()))
+open_image_plus(HOST, USERNAME, PASSWORD, PORT, group_id, image_id)
 image = IJ.getImage()
 output = convert_omero_rois_to_ij_rois(rois)
 manager = RoiManager()
