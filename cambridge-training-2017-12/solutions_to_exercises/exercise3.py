@@ -1,4 +1,4 @@
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 #  Copyright (C) 2017 University of Dundee. All rights reserved.
 #
 #
@@ -15,13 +15,16 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 #  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
-# This script loads the thumbnails associated to images and open them in ImageJ.
-# The thumbnails are turned into greyscale images in order to be viewed in ImageJ
-# Error handling is omitted to ease the reading of the script but this should be added
-# if used in production to make sure the services are closed
-# Information can be found https://docs.openmicroscopy.org/omero/5.4.1/developers/Java.html
+# This script loads the thumbnails associated to images and open them in
+# ImageJ.
+# The thumbnails are turned into greyscale images in order to be viewed in
+# ImageJ
+# Error handling is omitted to ease the reading of the script but this should
+# be added if used in production to make sure the services are closed
+# Information can be found at
+# https://docs.openmicroscopy.org/omero/5.4.1/developers/Java.html
 
 import os
 from os import path
@@ -45,15 +48,6 @@ from omero.log import Logger
 from omero.log import SimpleLogger
 from omero.model import Pixels
 
-from ome.formats.importer import ImportConfig
-from ome.formats.importer import OMEROWrapper
-from ome.formats.importer import ImportLibrary
-from ome.formats.importer import ImportCandidates
-from ome.formats.importer.cli import ErrorHandler
-from ome.formats.importer.cli import LoggingImportMonitor
-import loci.common
-from loci.formats.in import DefaultMetadataOptions
-from loci.formats.in import MetadataLevel
 from ij import IJ, ImagePlus
 from ij.process import ByteProcessor
 
@@ -70,7 +64,9 @@ dataset_id = "1022"
 USERNAME = "username"
 PASSWORD = "password"
 
-def open_image_plus(HOST, USERNAME, PASSWORD, PORT, group_id, image_id):
+
+def open_image_plus(HOST, USERNAME, PASSWORD, PORT, group_id,
+                    image_id):
     "Open the image using the Bio-Formats Importer"
 
     options = ""
@@ -116,6 +112,7 @@ def get_images(gateway, dataset_id):
     ids.add(val)
     return browse.getImagesForDatasets(ctx, ids)
 
+
 def load_thumbnail(gateway, image, size_x, size_y):
     "Loads the thumbnail a given size for the specified image"
     user = gateway.getLoggedInUser()
@@ -132,14 +129,16 @@ def load_thumbnail(gateway, image, size_x, size_y):
     stream.close()
     return image
 
+
 def convert_to_gray_scale(image):
-  result = BufferedImage(image.getWidth(),
-                         image.getHeight(),
-                         BufferedImage.TYPE_BYTE_GRAY)
-  g = result.getGraphics()
-  g.drawImage(image, 0, 0, None)
-  g.dispose()
-  return result
+    result = BufferedImage(image.getWidth(),
+                           image.getHeight(),
+                           BufferedImage.TYPE_BYTE_GRAY)
+    g = result.getGraphics()
+    g.drawImage(image, 0, 0, None)
+    g.dispose()
+    return result
+
 
 # Connect to OMERO
 gateway = connect_to_omero()
@@ -156,6 +155,6 @@ for image in images:
     name = "thumbnail_%s" % image.getId()
     imp = ImagePlus(name, processor)
     imp.show()
-    
+
 
 gateway.disconnect()
