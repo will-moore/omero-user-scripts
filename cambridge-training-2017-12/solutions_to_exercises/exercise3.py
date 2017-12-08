@@ -26,9 +26,6 @@
 # Information can be found at
 # https://docs.openmicroscopy.org/omero/5.4.1/developers/Java.html
 
-import os
-from os import path
-
 from javax.imageio import ImageIO
 from java.awt.image import BufferedImage
 from java.io import ByteArrayInputStream
@@ -46,7 +43,6 @@ from omero.gateway import SecurityContext
 from omero.gateway.facility import BrowseFacility
 from omero.log import Logger
 from omero.log import SimpleLogger
-from omero.model import Pixels
 
 from ij import IJ, ImagePlus
 from ij.process import ByteProcessor
