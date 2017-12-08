@@ -26,8 +26,9 @@
 import os
 from os import path
 
-from java.lang import Long
+from java.lang import Float, Long
 from java.lang import String
+from java.lang.reflect import Array
 import java
 
 
@@ -39,8 +40,8 @@ from omero.gateway import SecurityContext
 from omero.gateway.facility import BrowseFacility
 from omero.gateway.facility import ROIFacility
 from omero.gateway.model import EllipseData
+from omero.gateway.model import LineData
 from omero.gateway.model import PointData
-from omero.gateway.model import PolygonData
 from omero.gateway.model import RectangleData
 from omero.log import Logger
 from omero.log import SimpleLogger
@@ -56,7 +57,7 @@ import loci.common
 from loci.formats.in import DefaultMetadataOptions
 from loci.formats.in import MetadataLevel
 from ij import IJ, ImagePlus
-from ij.gui import OvalRoi, PointRoi, PolygonRoi, Roi 
+from ij.gui import Line, OvalRoi, PointRoi, Roi 
 from ij.process import ByteProcessor
 from ij.plugin.frame import RoiManager
 
@@ -160,6 +161,13 @@ def convert_point(data):
     return shape
 
 
+def convert_line(data):
+    "Convert a line into an imageJ line"
+    shape = Line(data.getX1(), data.getY1(), data.getX2(), data.getY2())
+    format_shape(data, shape)
+    return shape
+
+
 def convert_omero_rois_to_ij_rois(rois_results):
     "Convert the omero ROI into imageJ ROI"
    
@@ -177,6 +185,8 @@ def convert_omero_rois_to_ij_rois(rois_results):
                         output.append(convert_ellipse(shape))
                     elif isinstance(shape, PointData):
                         output.append(convert_point(shape))
+                    elif isinstance(shape, LineData):
+                        output.append(convert_line(shape))
     return output
 
 # Connect to OMERO
