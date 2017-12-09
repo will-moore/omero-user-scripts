@@ -24,9 +24,8 @@
 # Information can be found at
 # https://docs.openmicroscopy.org/omero/5.4.1/developers/Java.html
 
-from java.lang import Float, Long
+from java.lang import Long
 from java.lang import String
-from java.lang.reflect import Array
 import java
 
 
@@ -40,6 +39,8 @@ from omero.gateway.facility import ROIFacility
 from omero.gateway.model import EllipseData
 from omero.gateway.model import LineData
 from omero.gateway.model import PointData
+from omero.gateway.model import PolylineData
+from omero.gateway.model import PolygonData
 from omero.gateway.model import RectangleData
 from omero.log import Logger
 from omero.log import SimpleLogger
@@ -47,8 +48,9 @@ from omero.model import Pixels
 
 
 from ij import IJ, ImagePlus
-from ij.gui import Line, OvalRoi, PointRoi, Roi
+from ij.gui import Line, OvalRoi, PointRoi, PolygonRoi, Roi
 from ij.plugin.frame import RoiManager
+from ij.process import FloatPolygon
 
 
 # Setup
@@ -62,7 +64,6 @@ group_id = "-1"
 image_id = "1001"
 USERNAME = "username"
 PASSWORD = "password"
-
 
 def open_image_plus(HOST, USERNAME, PASSWORD, PORT, group_id,
                     image_id):
@@ -159,6 +160,17 @@ def convert_line(data):
     return shape
 
 
+def convert_polygon_polyline(data, type):
+    "Convert a polygon or polyline into an imageJ polygon or polyline"
+    points = data.getPoints()
+    polygon = FloatPolygon()
+    for p in points:
+        polygon.addPoint(p.getX(), p.getY())
+
+    shape = PolygonRoi(polygon, type)
+    format_shape(data, shape)
+    return shape
+
 def convert_omero_rois_to_ij_rois(rois_results):
     "Convert the omero ROI into imageJ ROI"
 
@@ -178,6 +190,12 @@ def convert_omero_rois_to_ij_rois(rois_results):
                         output.append(convert_point(shape))
                     elif isinstance(shape, LineData):
                         output.append(convert_line(shape))
+                    elif isinstance(shape, PolylineData):
+                        shape = convert_polygon_polyline(shape, Roi.POLYLINE)
+                        output.append(shape)
+                    elif isinstance(shape, PolygonData):
+                        shape = convert_polygon_polyline(shape, Roi.POLYGON)
+                        output.append(shape)
     return output
 
 
