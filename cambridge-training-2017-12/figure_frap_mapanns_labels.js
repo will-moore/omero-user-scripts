@@ -14,7 +14,7 @@
 
 figureModel.getSelected().forEach(function(p){
     var image_id = p.get('imageId');
-    var ns = 'demo.frap_data';
+    var ns = 'demo.simple_frap_data';
     var url = WEBINDEX_URL + "api/annotations/?type=map&image=" + image_id;
     url += '&ns=' + ns;
     var theT = p.get('theT');
